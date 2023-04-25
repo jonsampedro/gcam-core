@@ -60,7 +60,8 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
              "L154.intensity_MJvkm_R_trn_m_sz_tech_F_Y",
              "L154.loadfactor_R_trn_m_sz_tech_F_Y",
              "L154.speed_kmhr_R_trn_m_sz_tech_F_Y",
-             "L154.out_mpkm_R_trn_nonmotor_Yh"))
+             "L154.out_mpkm_R_trn_nonmotor_Yh",
+             FILE = "socioeconomics/income_shares"))
   } else if(command == driver.DECLARE_OUTPUTS) {
     return(c("L254.Supplysector_trn",
              "L254.FinalEnergyKeyword_trn",
@@ -176,6 +177,81 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
     L154.loadfactor_R_trn_m_sz_tech_F_Y <- get_data(all_data, "L154.loadfactor_R_trn_m_sz_tech_F_Y",strip_attributes = TRUE)
     L154.speed_kmhr_R_trn_m_sz_tech_F_Y <- get_data(all_data, "L154.speed_kmhr_R_trn_m_sz_tech_F_Y",strip_attributes = TRUE)
     L154.out_mpkm_R_trn_nonmotor_Yh <- get_data(all_data, "L154.out_mpkm_R_trn_nonmotor_Yh",strip_attributes = TRUE)
+
+    # Load subregional shares:
+    income_shares<-get_data(all_data, "socioeconomics/income_shares")
+
+    # ===================================================
+    # First, clean and prepare data on current and future income distribution projections
+    L144.income_shares<-income_shares %>%
+      filter(model %in% c(socioeconomics.BASE_INCSHARE_BASE, socioeconomics.BASE_INCSHARE_MODEL)) %>%
+      select(-gini, -gdp_pcap_decile, -model) %>%
+      rename(group = category,
+             share = shares) %>%
+      group_by(GCAM_region_ID, year, sce) %>%
+      mutate(share_agg = sum(share)) %>%
+      ungroup()
+
+    # Check income shares are correct for all regions
+    if((sum(L144.income_shares$share_agg) / nrow(L144.income_shares))-1 > 0.01){
+      print("WARNING:income shares not correctly asigned")
+    }
+
+    L144.income_shares<-L144.income_shares %>%
+      select(-share_agg)
+
+    income_groups <- unique(L144.income_shares$group)
+
+    # ===================================================
+    # PART 0: Incorporate multiple consumers to files
+
+    # Create a function to incorporate consumer groups:
+    add.cg <- function(df) {
+
+      df <- df %>%
+        repeat_add_columns(tibble(group = income_groups)) %>%
+        mutate(supplysector = paste0(supplysector, "_", group)) %>%
+        select(-group)
+
+      return(df)
+
+    }
+
+    # Some dataframes cannot be directly adjusted with the function:
+    # A54.demand
+    A54.demand <- A54.demand %>%
+    repeat_add_columns(tibble(group = income_groups)) %>%
+      mutate(energy.final.demand = paste0(energy.final.demand, "_", group)) %>%
+      select(-group)
+
+    # A54.sector
+    A54.sector <- A54.sector %>%
+      repeat_add_columns(tibble(group = income_groups)) %>%
+      mutate(energy.final.demand = paste0(energy.final.demand, "_", group),
+             supplysector = paste0(supplysector, "_", group)) %>%
+      select(-group)
+
+    # A54.globaltech_passthru
+    A54.globaltech_passthru <- A54.globaltech_passthru %>%
+      repeat_add_columns(tibble(group = income_groups)) %>%
+      mutate(minicam.energy.input = paste0(minicam.energy.input, "_", group),
+             supplysector = paste0(supplysector, "_", group)) %>%
+      select(-group)
+
+
+    # Add consumer groups to all the input files using the function
+    UCD_techs <- add.cg(UCD_techs)
+
+    A54.tranSubsector_logit <- add.cg(A54.tranSubsector_logit)
+    A54.tranSubsector_shrwt <- add.cg(A54.globaltech_nonmotor)
+    A54.tranSubsector_interp <- add.cg(A54.globaltech_nonmotor)
+    A54.tranSubsector_VOTT <- add.cg(A54.globaltech_nonmotor)
+
+    A54.globaltech_nonmotor <- add.cg(A54.globaltech_nonmotor)
+    A54.globaltranTech_interp <- add.cg(A54.globaltranTech_interp)
+    A54.globaltranTech_retire <- add.cg(A54.globaltranTech_retire)
+    A54.globaltranTech_shrwt <- add.cg(A54.globaltranTech_shrwt)
+
 
     # ===================================================
 
