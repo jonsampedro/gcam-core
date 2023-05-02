@@ -156,16 +156,73 @@ module_gcamusa_L254.transportation_USA <- function(command, ...) {
     L154.in_EJ_state_trn_m_sz_tech_F <- get_data(all_data, "L154.in_EJ_state_trn_m_sz_tech_F",strip_attributes = TRUE)
     L154.out_mpkm_state_trn_nonmotor_Yh <- get_data(all_data, "L154.out_mpkm_state_trn_nonmotor_Yh",strip_attributes = TRUE)
 
+    # First delete multiple consumers as they are not applied to gcamusa
+    # create a function:
+    remove.mult.groups <- function(df){
+
+      df <- df %>%
+        mutate(supplysector = gsub("d10", "dx", supplysector)) %>%
+        mutate(agg.supplysector = if_else(grepl("pass", supplysector) | grepl("aviation", supplysector), gsub('.{3}$', '', supplysector), supplysector)) %>%
+        mutate(supplysector = agg.supplysector) %>%
+        select(-agg.supplysector) %>%
+        distinct()
+
+      return(df)
+
+    }
+
+
+    # Remove multiple consumers
+    L254.Supplysector_trn <- remove.mult.groups(L254.Supplysector_trn)
+    L254.FinalEnergyKeyword_trn <- remove.mult.groups(L254.FinalEnergyKeyword_trn)
+    L254.tranSubsectorLogit <- remove.mult.groups(L254.tranSubsectorLogit)
+    L254.tranSubsectorShrwtFllt <- remove.mult.groups(L254.tranSubsectorShrwtFllt)
+    L254.tranSubsectorInterp <- remove.mult.groups(L254.tranSubsectorInterp)
+    L254.tranSubsectorSpeed <- remove.mult.groups(L254.tranSubsectorSpeed)
+    L254.tranSubsectorSpeed_passthru <- remove.mult.groups(L254.tranSubsectorSpeed_passthru)
+    L254.tranSubsectorSpeed_noVOTT <- remove.mult.groups(L254.tranSubsectorSpeed_noVOTT)
+    L254.tranSubsectorSpeed_nonmotor <- remove.mult.groups(L254.tranSubsectorSpeed_nonmotor)
+    L254.tranSubsectorVOTT <- remove.mult.groups(L254.tranSubsectorVOTT)
+    L254.tranSubsectorFuelPref <- remove.mult.groups(L254.tranSubsectorFuelPref)
+    L254.StubTranTech <- remove.mult.groups(L254.StubTranTech)
+    L254.StubTech_passthru <- remove.mult.groups(L254.StubTech_passthru)
+    L254.StubTech_nonmotor <- remove.mult.groups(L254.StubTech_nonmotor)
+    L254.StubTranTechLoadFactor <- remove.mult.groups(L254.StubTranTechLoadFactor)
+    L254.StubTranTechCost <- remove.mult.groups(L254.StubTranTechCost)
+    L254.StubTranTechCoef <- remove.mult.groups(L254.StubTranTechCoef)
+
+    # Some inputs use energy.final.demand instead of supplysector
+    # They are adjusted with another function
+    remove.mult.groups.enDem <- function(df){
+
+      df <- df %>%
+        mutate(energy.final.demand = gsub("d10", "dx", energy.final.demand)) %>%
+        mutate(agg.supplysector = if_else(grepl("pass", energy.final.demand) | grepl("aviation", energy.final.demand), gsub('.{3}$', '', energy.final.demand), energy.final.demand)) %>%
+        mutate(energy.final.demand = agg.supplysector) %>%
+        select(-agg.supplysector) %>%
+        distinct()
+
+      return(df)
+
+    }
+
+    L254.PerCapitaBased_trn <- remove.mult.groups.enDem(L254.PerCapitaBased_trn)
+    L254.PriceElasticity_trn <- remove.mult.groups.enDem(L254.PriceElasticity_trn)
+    L254.IncomeElasticity_trn <- remove.mult.groups.enDem(L254.IncomeElasticity_trn)
+
+
     # Need to delete the transportation sector in the USA region (energy-final-demands and supplysectors)
     # L254.DeleteSupplysector_USAtrn: Delete transportation supplysectors of the USA region
-    L254.Supplysector_trn %>%
+    # Need to add multiple consumers, to delete the corect sectors
+    get_data(all_data, "L254.Supplysector_trn",strip_attributes = TRUE) %>% filter(sce %in% c("CORE")) %>%
       mutate(region = region) %>% # strip off attributes like title, etc.
       filter(region == gcam.USA_REGION) %>%
       select(region, supplysector) ->
       L254.DeleteSupplysector_USAtrn
 
     # L254.DeleteFinalDemand_USAtrn: Delete energy final demand sectors of the USA region
-    L254.PerCapitaBased_trn %>%
+    # Need to add multiple consumers, to delete the corect sectors
+    get_data(all_data, "L254.PerCapitaBased_trn",strip_attributes = TRUE)%>% filter(sce %in% c("CORE")) %>%
       mutate(region = region) %>% # strip off attributes like title, etc.
       filter(region == gcam.USA_REGION) %>%
       select(LEVEL2_DATA_NAMES[["EnergyFinalDemand"]],sce) ->
@@ -292,14 +349,14 @@ module_gcamusa_L254.transportation_USA <- function(command, ...) {
 
     # First, need to calculate the service output for all tranTechnologies
     # calInput * loadFactor * unit_conversion / (coef * unit conversion)
-    L254.StubTranTechCalInput_USA %>%
-      left_join_error_no_match(L254.StubTranTechLoadFactor_USA %>% filter(sce=="CORE"),
+    L254.StubTranTechOutput_USA <- L254.StubTranTechCalInput_USA %>%
+      left_join(L254.StubTranTechLoadFactor_USA %>% filter(sce=="CORE"),
                                by = c("region", "supplysector", "tranSubsector", "stub.technology", "year","sce")) %>%
       left_join_error_no_match(L254.StubTranTechCoef_USA%>% filter(sce=="CORE"),
                                by = c("region", "supplysector", "tranSubsector", "stub.technology", "year", "minicam.energy.input","sce")) %>%
       mutate(output = round(calibrated.value * loadFactor * CONV_EJ_GJ / (coefficient * CONV_BTU_KJ),
-                            digits = gcamusa.DIGITS_TRNUSA_DEFAULT))  ->
-      L254.StubTranTechOutput_USA
+                            digits = gcamusa.DIGITS_TRNUSA_DEFAULT))
+
 
     # The next step is to calculate the aggregated outputs by supplysector
     # Outputs of certain supplysectors are inputs for the passthrough technologies
@@ -345,15 +402,15 @@ module_gcamusa_L254.transportation_USA <- function(command, ...) {
       L254.StubTranTechCalInput_passthru_USA
 
     # L254.BaseService_trn_USA: base-year service output of transportation final demand
-    L254.StubTranTechOutput_USA %>%
+    L254.BaseService_trn_USA <- L254.StubTranTechOutput_USA %>%
       select(LEVEL2_DATA_NAMES[["StubTranTech"]], year, base.service = output) %>%
       bind_rows(L254.StubTranTechProd_nonmotor_USA %>%
                   select(LEVEL2_DATA_NAMES[["StubTranTech"]], year, base.service = calOutputValue)) %>%
       left_join_error_no_match(select(A54.sector, supplysector, energy.final.demand), by = "supplysector") %>%
       group_by(region, energy.final.demand, year) %>%
       summarise(base.service = sum(base.service)) %>%
-      ungroup ->
-      L254.BaseService_trn_USA
+      ungroup()
+
 
 
     # Produce outputs
