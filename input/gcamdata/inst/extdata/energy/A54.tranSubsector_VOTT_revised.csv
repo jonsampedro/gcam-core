@@ -14,14 +14,11 @@ trn_pass,Walk,1.066,1.066,0,1.066,1,,0
 trn_pass_road,Bus,0.77,1.066,0.128,0.808,1,,0
 trn_pass_road_LDV,2W and 3W,0.82,1.066,0,0.82,1,,0
 trn_pass_road_LDV_4W,Car,0.82,1.066,0,0.82,0,,0
-trn_pass_road_LDV_4W,Large Car and Truck,0.82,1.066,0,0.82,0,,0.1
-trn_pass_road_LDV_4W,Large Car and Truck,0.82,1.066,0,0.82,0,,0.2
-trn_pass_road_LDV_4W,Mini Car,0.82,1.066,0,0.82,0,,-0.2
-trn_pass_road_LDV_4W,Car,0.82,1.066,0,0.82,0,,-0.1
 trn_pass_road_LDV_4W,Large Car and Truck,0.82,1.066,0,0.82,0,,0
+trn_pass_road_LDV_4W,Mini Car,0.82,1.066,0,0.82,0,,-0.2
 # Pass-through tranSubsectors
 trn_pass,road,,,,1,0,,0
 trn_pass_road,LDV,,,,1,0,,0
 trn_pass_road,bus,0.77,1.066,0.128,0.808,0,,0
 trn_pass_road_LDV,4W,0.82,1.066,0,0.82,1,trn_pass_road_LDV_4W,0
-trn_pass_road_LDV,2W,,,,1,0,,0
+trn_pass_road_LDV,2W and 3W,,,,1,0,,0

@@ -61,7 +61,10 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
              "L154.loadfactor_R_trn_m_sz_tech_F_Y",
              "L154.speed_kmhr_R_trn_m_sz_tech_F_Y",
              "L154.out_mpkm_R_trn_nonmotor_Yh",
-             FILE = "socioeconomics/income_shares"))
+             FILE = "socioeconomics/income_shares",
+             "L101.Pop_thous_R_Yh",
+             "L102.pcgdp_thous90USD_Scen_R_Y",
+             FILE = "energy/A54.CalPrice_trn"))
   } else if(command == driver.DECLARE_OUTPUTS) {
     return(c("L254.Supplysector_trn",
              "L254.FinalEnergyKeyword_trn",
@@ -178,6 +181,14 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
     L154.speed_kmhr_R_trn_m_sz_tech_F_Y <- get_data(all_data, "L154.speed_kmhr_R_trn_m_sz_tech_F_Y",strip_attributes = TRUE)
     L154.out_mpkm_R_trn_nonmotor_Yh <- get_data(all_data, "L154.out_mpkm_R_trn_nonmotor_Yh",strip_attributes = TRUE)
 
+    A54.CalPrice_trn <- get_data(all_data, "energy/A54.CalPrice_trn",strip_attributes = TRUE)
+
+    # Check if pop is needed: Otherwise delete it!!!
+    L101.Pop_thous_R_Yh <- get_data(all_data, "L101.Pop_thous_R_Yh",strip_attributes = TRUE)
+    L102.pcgdp_thous90USD_Scen_R_Y <- get_data(all_data, "L102.pcgdp_thous90USD_Scen_R_Y",strip_attributes = TRUE)
+
+
+
     # Load subregional shares:
     income_shares<-get_data(all_data, "socioeconomics/income_shares")
 
@@ -202,16 +213,43 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
 
     income_groups <- unique(L144.income_shares$group)
 
+    # Calculate suregional gdp per capita:
+    # Subregional per capita income per region, year and consumer group
+    L102.pcgdp_thous90USD_Scen_R_Y_gr <- L102.pcgdp_thous90USD_Scen_R_Y %>%
+      left_join_error_no_match(GCAM_region_names, by = "GCAM_region_ID") %>%
+      rename(pcGDP_thous90USD = value) %>%
+      filter(year %in% HISTORICAL_YEARS) %>%
+      left_join_error_no_match(L101.Pop_thous_R_Yh, by=c("GCAM_region_ID","year")) %>%
+      rename(pop_thous = value) %>%
+      mutate(gdp = pcGDP_thous90USD * 1E3 * pop_thous * 1E3) %>%
+      repeat_add_columns(tibble(group = unique(L144.income_shares$group))) %>%
+      mutate(pop_thous = pop_thous * (1 / length(unique(L144.income_shares$group)))) %>%
+      mutate(sce = gsub("g", "", scenario)) %>%
+      left_join_error_no_match(L144.income_shares %>%
+                                 filter(year %in% HISTORICAL_YEARS) %>%
+                                 select(-sce)
+                               , by = c("GCAM_region_ID", "year", "group")) %>%
+      mutate(gdp_gr = gdp * share,
+             gdp_pc = (gdp_gr / 1E3) / (pop_thous * 1E3)) %>%
+      select(-pcGDP_thous90USD) %>%
+      rename(pcGDP_thous90USD = gdp_pc) %>%
+      select(scenario, GCAM_region_ID, region, year, group, pcGDP_thous90USD)
+
     # ===================================================
     # PART 0: Incorporate multiple consumers to files
+
+    # Only apply to passenger modes
 
     # Create a function to incorporate consumer groups:
     add.cg <- function(df) {
 
       df <- df %>%
+        filter(grepl("pass", supplysector) | grepl("aviation", supplysector)) %>%
         repeat_add_columns(tibble(group = income_groups)) %>%
         mutate(supplysector = paste0(supplysector, "_", group)) %>%
-        select(-group)
+        select(-group) %>%
+        bind_rows(df %>%
+                    filter(grepl("freight", supplysector) | grepl("shipping", supplysector)))
 
       return(df)
 
@@ -220,38 +258,106 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
     # Some dataframes cannot be directly adjusted with the function:
     # A54.demand
     A54.demand <- A54.demand %>%
-    repeat_add_columns(tibble(group = income_groups)) %>%
+      filter(grepl("pass", energy.final.demand) | grepl("aviation", energy.final.demand)) %>%
+      repeat_add_columns(tibble(group = income_groups)) %>%
       mutate(energy.final.demand = paste0(energy.final.demand, "_", group)) %>%
-      select(-group)
+      select(-group) %>%
+      bind_rows(A54.demand %>%
+                  filter(grepl("freight", energy.final.demand) | grepl("shipping", energy.final.demand)))
 
     # A54.sector
     A54.sector <- A54.sector %>%
+      filter(grepl("pass", energy.final.demand) | grepl("aviation", energy.final.demand)) %>%
       repeat_add_columns(tibble(group = income_groups)) %>%
       mutate(energy.final.demand = paste0(energy.final.demand, "_", group),
              supplysector = paste0(supplysector, "_", group)) %>%
-      select(-group)
+      select(-group) %>%
+      bind_rows(A54.sector %>%
+                  filter(grepl("freight", energy.final.demand) | grepl("shipping", energy.final.demand)))
 
     # A54.globaltech_passthru
     A54.globaltech_passthru <- A54.globaltech_passthru %>%
+      filter(grepl("pass", minicam.energy.input) | grepl("aviation", minicam.energy.input)) %>%
       repeat_add_columns(tibble(group = income_groups)) %>%
       mutate(minicam.energy.input = paste0(minicam.energy.input, "_", group),
              supplysector = paste0(supplysector, "_", group)) %>%
-      select(-group)
+      select(-group) %>%
+      bind_rows(A54.globaltech_passthru %>%
+                  filter(grepl("freight", minicam.energy.input) | grepl("shipping", minicam.energy.input)))
 
 
     # Add consumer groups to all the input files using the function
-    UCD_techs <- add.cg(UCD_techs)
+    UCD_techs <- add.cg(UCD_techs) %>%
+      distinct()
 
     A54.tranSubsector_logit <- add.cg(A54.tranSubsector_logit)
-    A54.tranSubsector_shrwt <- add.cg(A54.globaltech_nonmotor)
-    A54.tranSubsector_interp <- add.cg(A54.globaltech_nonmotor)
-    A54.tranSubsector_VOTT <- add.cg(A54.globaltech_nonmotor)
+    A54.tranSubsector_shrwt <- add.cg(A54.tranSubsector_shrwt)
+    A54.tranSubsector_interp <- add.cg(A54.tranSubsector_interp)
+    A54.tranSubsector_VOTT <- add.cg(A54.tranSubsector_VOTT) %>%
+      # adjust speed.source
+      repeat_add_columns(tibble(group = income_groups)) %>%
+      mutate(speed.source = if_else(!is.na(speed.source), paste0(speed.source, "_", group), speed.source)) %>%
+      select(-group) %>%
+      distinct() %>%
+      mutate(ss_adj = gsub("_4W","", speed.source)) %>%
+      mutate(adj = if_else(is.na(speed.source) == F & supplysector != ss_adj, "warning", "ok")) %>%
+      filter(adj == "ok") %>%
+      select(-adj, -ss_adj)
 
     A54.globaltech_nonmotor <- add.cg(A54.globaltech_nonmotor)
     A54.globaltranTech_interp <- add.cg(A54.globaltranTech_interp)
     A54.globaltranTech_retire <- add.cg(A54.globaltranTech_retire)
     A54.globaltranTech_shrwt <- add.cg(A54.globaltranTech_shrwt)
 
+    #---------------------------
+    #---------------------------
+    # Calculate the shares allocated to each income group. This is calculated at three levels:
+    # 1) Service output level, based on the price_elasticity_function
+    # 2) Transportation subsector level: based on the "tran_subsector" equation
+    # 3) Technology level: based on the tran_technology equation
+
+    # 1) Service output demand shares:
+    L154.trn_serv_shares_pass <- get_data(all_data, "energy/A54.demand",strip_attributes = TRUE) %>%
+      repeat_add_columns(tibble(sce = c("CORE","SSP1", "SSP2", "SSP3", "SSP4", "SSP5"))) %>%
+      filter(sce != "SSP1") %>%
+      bind_rows(get_data(all_data, "energy/A54.demand_ssp1",strip_attributes = TRUE) %>% mutate(sce = "SSP1")) %>%
+      filter(grepl("pass", energy.final.demand) | grepl("aviation", energy.final.demand)) %>%
+      repeat_add_columns(tibble(group = unique(L144.income_shares$group))) %>%
+      mutate(year = MODEL_FINAL_BASE_YEAR) %>%
+      repeat_add_columns(tibble(region = unique(GCAM_region_names$region))) %>%
+      left_join_error_no_match(GCAM_region_names, by = "region") %>%
+      left_join_error_no_match(L102.pcgdp_thous90USD_Scen_R_Y_gr %>%
+                                 bind_rows(L102.pcgdp_thous90USD_Scen_R_Y_gr %>%
+                                             filter(scenario == "SSP2") %>%
+                                             mutate(scenario = "CORE")) %>%
+                                 mutate(sce = scenario)
+                               , by = c("sce", "group", "year", "region", "GCAM_region_ID")) %>%
+      left_join_error_no_match(A54.CalPrice_trn %>%
+                                 gather_years() %>%
+                                 rename(energy.final.demand = sector)
+                               , by = c("energy.final.demand", "year", "region")) %>%
+      rename(price = value) %>%
+      mutate(income_effect = pcGDP_thous90USD ^ income.elasticity,
+             price_effect = price ^ price.elasticity) %>%
+      # As we don't have price differences yet, we calculate shares based on the income effect
+      group_by(scenario, region, year, energy.final.demand) %>%
+      mutate(income_effect_agg = sum(income_effect)) %>%
+      ungroup() %>%
+      mutate(serv.share = income_effect / income_effect_agg) %>%
+      select(scenario, region, year, energy.final.demand, group, serv.share) %>%
+      arrange(year, energy.final.demand, region)
+
+      # add 1 shares for freight
+    L154.trn_serv_shares_fr<-get_data(all_data, "energy/A54.demand",strip_attributes = TRUE) %>%
+      repeat_add_columns(tibble(sce = c("CORE","SSP1", "SSP2", "SSP3", "SSP4", "SSP5"))) %>%
+      filter(grepl("freight", energy.final.demand) | grepl("shipping", energy.final.demand)) %>%
+      mutate(year = MODEL_FINAL_BASE_YEAR) %>%
+      repeat_add_columns(tibble(region = unique(GCAM_region_names$region))) %>%
+      mutate(group = "x",
+             serv.share = 1) %>%
+      select(scenario = sce, region, year, energy.final.demand, group, serv.share)
+
+    L154.trn_serv_shares <- bind_rows(L154.trn_serv_shares_pass, L154.trn_serv_shares_fr)
 
     # ===================================================
 
@@ -265,15 +371,16 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
 
     #kbn 2019-10-14 Switching to left_join_keep_first, since we have fewer mode categories now.
     #kbn 2020-06-02 Adding sce below (See description of changes using search string kbn 2020-06-02 Making changes to generate xmls for SSPs flexibly)
-    L154.intensity_MJvkm_R_trn_m_sz_tech_F_Y %>%
+    L254.StubTranTech <- L154.intensity_MJvkm_R_trn_m_sz_tech_F_Y %>%
       select(GCAM_region_ID, one_of(c("UCD_sector", "mode", "size.class", "UCD_technology", "UCD_fuel","sce"))) %>%
       # Match in region names and UCD techs
       left_join_error_no_match(GCAM_region_names, by = "GCAM_region_ID") %>%
-      left_join_keep_first_only(UCD_techs, by = c("UCD_sector", "mode", "size.class", "UCD_technology", "UCD_fuel")) %>%
-      unique() %>%
+      distinct() %>%
+      left_join(UCD_techs, by = c("UCD_sector", "mode", "size.class", "UCD_technology", "UCD_fuel")) %>%
       rename(stub.technology = tranTechnology) %>%
-      select(LEVEL2_DATA_NAMES[["StubTranTech"]],sce) ->
-      L254.StubTranTech # OUTPUT
+      select(LEVEL2_DATA_NAMES[["StubTranTech"]],sce) %>%
+      distinct()# OUTPUT
+
 
     # Write the pass-through technologies to all regions
     # First, create two lists to filter technologies later
@@ -391,21 +498,20 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
     # L254.tranSubsectorSpeed: Speeds of transportation modes (not including pass-through sectors)
     #kbn 2019-10-14 Switching to left_join_keep_first, since we have fewer mode categories now.
     #kbn 2020-06-02 Updating with sce below (See description of changes using search string kbn 2020-06-02 Making changes to generate xmls for SSPs flexibly)
-    L154.speed_kmhr_R_trn_m_sz_tech_F_Y %>%
+    L254.tranSubsectorSpeed <- L154.speed_kmhr_R_trn_m_sz_tech_F_Y %>%
       filter(year %in% MODEL_YEARS) %>%
       # Match in GCAM region names and UCD technologies
       left_join_error_no_match(GCAM_region_names, by = "GCAM_region_ID") %>%
-      left_join_keep_first_only(UCD_techs, by = c("UCD_sector", "mode", "size.class", "UCD_technology", "UCD_fuel")) %>%
+      left_join(UCD_techs, by = c("UCD_sector", "mode", "size.class", "UCD_technology", "UCD_fuel")) %>%
       mutate(speed = round(value, energy.DIGITS_SPEED)) %>%
       select(LEVEL2_DATA_NAMES[["tranSubsectorSpeed"]],sce) %>%
-      distinct()->
-      L254.tranSubsectorSpeed # OUTPUT
+      distinct() # OUTPUT
 
     # This does not include the pass-through tranSectors
     # Pass-through tranSubsectors for which time value is added are assigned a sector from which to get their speed.
     # L254.tranSubsectorSpeed_passthru: speeds of pass-through transportation subsectors
     # A54.tranSubsector_VOTT reports transportation default subsector value of time in transit multipliers (VOTT = wage rate * this factor)
-    A54.tranSubsector_VOTT %>%
+    L254.tranSubsectorSpeed_passthru <- A54.tranSubsector_VOTT %>%
       filter(!is.na(speed.source)) %>%
       write_to_all_regions(c(LEVEL2_DATA_NAMES[["tranSubsector"]], "speed.source","sce"), GCAM_region_names = GCAM_region_names) %>%
       repeat_add_columns(tibble(year = MODEL_YEARS)) %>%
@@ -415,8 +521,8 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
       rename(tranSubsector = tranSubsector.x) %>%
       select(LEVEL2_DATA_NAMES[["tranSubsector"]], "year", "speed","sce") %>%
       #We won't have historical data on speed for the SSPs
-      na.omit()->
-      L254.tranSubsectorSpeed_passthru
+      na.omit()
+
 
     # L254.tranSubsectorSpeed_noVOTT: Speeds of transportation subsectors whose time value is not considered
     # NOTE: This step should be unnecessary. Currently there is no model default value for speed, and a subsector
@@ -448,7 +554,7 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
 
     # L254.tranSubsectorVOTT: Value of time in transit parameterization
     # NOTE: These are currently considered time- and region-independent characteristics
-    A54.tranSubsector_VOTT %>%
+    L254.tranSubsectorVOTT <- A54.tranSubsector_VOTT %>%
       filter(addTimeValue == 1) %>%
       write_to_all_regions(c(LEVEL2_DATA_NAMES[["tranSubsector"]], "addTimeValue", "time.value.multiplier","sce"),
                            GCAM_region_names = GCAM_region_names) %>%
@@ -457,11 +563,12 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
       # Subset only the combinations of region, supplysector, and tranSubsector
       semi_join(r_ss_ts_all, by = c("region", "supplysector", "tranSubsector","sce")) %>%
       select(LEVEL2_DATA_NAMES[["tranSubsector"]], year.fillout, addTimeValue, time.value.multiplier,sce) %>%
-      na.omit()->
-      L254.tranSubsectorVOTT
+      na.omit() %>%
+      distinct()
+
 
     # L254.tranSubsectorFuelPref: Subsector preferences that are tied to GDP (unrelated to time value)
-    A54.tranSubsector_VOTT %>%
+    L254.tranSubsectorFuelPref <- A54.tranSubsector_VOTT %>%
       filter(fuelprefElasticity != 0) %>%
       write_to_all_regions(c(LEVEL2_DATA_NAMES[["tranSubsector"]], "fuelprefElasticity","sce"),
                            GCAM_region_names = GCAM_region_names) %>%
@@ -469,8 +576,8 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
       #mutate(sce = paste0("CORE")) %>%
       # Subset only the combinations of region, supplysector, and tranSubsector that are available
       semi_join(r_ss_ts_all, by = c("region", "supplysector", "tranSubsector")) %>%
-      select(LEVEL2_DATA_NAMES[["tranSubsector"]], year.fillout, fuelprefElasticity,sce) %>% na.omit() ->
-      L254.tranSubsectorFuelPref # OUTPUT
+      select(LEVEL2_DATA_NAMES[["tranSubsector"]], year.fillout, fuelprefElasticity,sce) %>%
+      na.omit() # OUTPUT
 
 
     # PART C: TECHNOLOGY INFORMATION: GLOBAL TECHNOLOGIES (i.e., not tranTechnologies)
@@ -593,15 +700,19 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
     # L254.StubTranTechCalInput: calibrated input of tranTechnologies
     # L154.in_EJ_R_trn_m_sz_tech_F_Yh reports transportation energy consumption by GCAM region / mode / size class / technology / fuel / historical year
     #kbn 2019-10-14 Switching to left_join_keep_first, since we have fewer mode categories now.
-    L154.in_EJ_R_trn_m_sz_tech_F_Yh %>%
+    L254.StubTranTechCalInput_basetable <- L154.in_EJ_R_trn_m_sz_tech_F_Yh %>%
       filter(year %in% MODEL_BASE_YEARS) %>%
       mutate(calibrated.value = round(value, energy.DIGITS_CALOUTPUT)) %>%
       left_join_error_no_match(GCAM_region_names, by = "GCAM_region_ID") %>%
-      left_join_keep_first_only(UCD_techs, by = c("UCD_sector", "mode", "size.class",
+      left_join(UCD_techs, by = c("UCD_sector", "mode", "size.class",
                                                  "UCD_technology", "UCD_fuel")) %>%
       select(region, supplysector, tranSubsector, stub.technology = tranTechnology,
-             year, minicam.energy.input, calibrated.value) ->
-      L254.StubTranTechCalInput_basetable
+             year, minicam.energy.input, calibrated.value) %>%
+      group_by(region, supplysector, tranSubsector, stub.technology,
+               year, minicam.energy.input) %>%
+      summarise(calibrated.value = sum(calibrated.value)) %>%
+      ungroup()
+
 
     #kbn 2020-02-06 Energy intensity are not separated by SSPs. So, just copying information from CORE to all SSPs.
     # L254.StubTranTechCalInput_basetable<- bind_rows(L254.StubTranTechCalInput_basetable %>% mutate(sce= paste0("CORE")),
@@ -613,6 +724,44 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
                                                     L254.StubTranTechCalInput_basetable %>% mutate(sce= paste0("SSP1")),
                                                     L254.StubTranTechCalInput_basetable %>% mutate(sce= paste0("SSP3")),
                                                     L254.StubTranTechCalInput_basetable %>% mutate(sce= paste0("SSP5")))
+
+
+    # Allocate energy across multiple groups using shares:
+    # TODO: change shares by mode/tech
+
+    # Create a supporting df
+    adj_supsec<- get_data(all_data, "energy/A54.globaltranTech_shrwt_revised",strip_attributes = TRUE) %>%
+      select(supplysector) %>%
+      distinct() %>%
+      filter(grepl("pass", supplysector) | grepl("aviation", supplysector)) %>%
+      mutate(agg.supplysector = if_else(grepl("trn_aviation", supplysector), "trn_aviation_intl", supplysector),
+             agg.supplysector = if_else(grepl("trn_pass", supplysector), "trn_pass", agg.supplysector)) %>%
+      repeat_add_columns(tibble(group = income_groups)) %>%
+      mutate(agg.supplysector = paste0(agg.supplysector, "_", group),
+             supplysector = paste0(supplysector, "_", group)) %>%
+      select(-group) %>%
+      bind_rows(get_data(all_data, "energy/A54.globaltranTech_shrwt_revised",strip_attributes = TRUE) %>%
+                  select(supplysector) %>%
+                  distinct() %>%
+                  filter(grepl("freight", supplysector) | grepl("shipping", supplysector)) %>%
+                  mutate(agg.supplysector = if_else(grepl("trn_shipping", supplysector), "trn_shipping_intl", supplysector),
+                         agg.supplysector = if_else(grepl("trn_freight", supplysector), "trn_freight", agg.supplysector)))
+
+
+
+    # Allocate the calibrated energy
+    L254.StubTranTechCalInput_basetable <- L254.StubTranTechCalInput_basetable %>%
+      left_join_error_no_match(adj_supsec, by = "supplysector") %>%
+      left_join_error_no_match(L154.trn_serv_shares %>%
+                                 mutate(agg.supplysector = paste0(energy.final.demand, "_", group),
+                                        agg.supplysector = gsub("_x", "", agg.supplysector)) %>%
+                                 select(-energy.final.demand, -group, -year) %>%
+                                 rename(sce = scenario)
+                               , by = c("region", "agg.supplysector", "sce")) %>%
+      select(-agg.supplysector) %>%
+      mutate(calibrated.value = calibrated.value * serv.share) %>%
+      select(-serv.share)
+
 
     # Aggregate to set subsector share weights according to region, supplysector, tranSubsector, year combination
     # kbn 2020-02-06 Add sce below (See description of changes using search string kbn 2020-06-02 Making changes to generate xmls for SSPs flexibly)
@@ -637,52 +786,60 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
     # L154.loadfactor_R_trn_m_sz_tech_F_Y reports load factors by GCAM region / mode / size class / technology / fuel / year
     #kbn 2019-10-14 Switching to left_join_keep_first, since we have fewer mode categories now.
     #kbn 2020-06-02 Adding sce below (See description of changes using search string kbn 2020-06-02 Making changes to generate xmls for SSPs flexibly)
-    L154.loadfactor_R_trn_m_sz_tech_F_Y %>%
+    L254.StubTranTechLoadFactor <- L154.loadfactor_R_trn_m_sz_tech_F_Y %>%
       filter(year %in% MODEL_YEARS) %>%
       mutate(loadFactor = round(value, energy.DIGITS_LOADFACTOR)) %>%
       left_join_error_no_match(GCAM_region_names, by = "GCAM_region_ID") %>%
-      left_join_keep_first_only(UCD_techs, by = c("UCD_sector", "mode", "size.class", "UCD_technology", "UCD_fuel")) %>%
+      left_join(UCD_techs, by = c("UCD_sector", "mode", "size.class", "UCD_technology", "UCD_fuel")) %>%
       rename(stub.technology = tranTechnology) %>%
-      select(LEVEL2_DATA_NAMES[["StubTranTechLoadFactor"]],sce) ->
-      L254.StubTranTechLoadFactor # OUTPUT
+      select(LEVEL2_DATA_NAMES[["StubTranTechLoadFactor"]],sce) %>%
+      group_by(region, supplysector, tranSubsector, stub.technology, year, sce) %>%
+      summarise(loadFactor = mean(loadFactor)) %>%
+      ungroup() %>%
+      select(LEVEL2_DATA_NAMES[["StubTranTechLoadFactor"]],sce)
 
     # L254.StubTranTechCost: tranTechnology costs (all periods)
     # L154.cost_usdvkm_R_trn_m_sz_tech_F_Y reports non-fuel cost by GCAM region / mode / size class / technology / fuel / year "
     ##kbn 2019-10-14 Switching to left_join_keep_first, since we have fewer mode categories now.
     #kbn 2020-06-02 Updating with sce below (See description of changes using search string kbn 2020-06-02 Making changes to generate xmls for SSPs flexibly)
-    L154.cost_usdvkm_R_trn_m_sz_tech_F_Y %>%
+    L254.StubTranTechCost <- L154.cost_usdvkm_R_trn_m_sz_tech_F_Y %>%
       filter(year %in% MODEL_YEARS) %>%
       mutate(input.cost = round((value / gdp_deflator(2005, 1990)), energy.DIGITS_COST)) %>%
       left_join_error_no_match(GCAM_region_names, by = "GCAM_region_ID") %>%
-      left_join_keep_first_only(UCD_techs, by = c("UCD_sector", "mode", "size.class", "UCD_technology", "UCD_fuel")) %>%
+      left_join(UCD_techs, by = c("UCD_sector", "mode", "size.class", "UCD_technology", "UCD_fuel")) %>%
       rename(stub.technology = tranTechnology) %>%
       mutate(minicam.non.energy.input = "non-energy") %>%
-      select(LEVEL2_DATA_NAMES[["StubTranTechCost"]],sce) ->
-      L254.StubTranTechCost # OUTPUT
+      select(LEVEL2_DATA_NAMES[["StubTranTechCost"]],sce) %>%
+      group_by(region, supplysector, tranSubsector, stub.technology, year, minicam.non.energy.input, sce) %>%
+      summarise(input.cost = mean(input.cost)) %>%
+      ungroup() %>%
+      select(LEVEL2_DATA_NAMES[["StubTranTechCost"]],sce)
+
 
     # L254.StubTranTechCoef: tranTechnology coefficients (intensities; all periods)
     # L154.intensity_MJvkm_R_trn_m_sz_tech_F_Y reports vehicle energy intensity by GCAM region / mode / size class / technology / fuel / year
     #kbn 2019-10-14 Switching to left_join_keep_first, since we have fewer mode categories now.
-    L154.intensity_MJvkm_R_trn_m_sz_tech_F_Y %>%
+    L254.StubTranTechCoef <- L154.intensity_MJvkm_R_trn_m_sz_tech_F_Y %>%
       filter(year %in% MODEL_YEARS) %>%
       mutate(coefficient = round((value * CONV_MJ_BTU), energy.DIGITS_COEFFICIENT)) %>%
       left_join_error_no_match(GCAM_region_names, by = "GCAM_region_ID") %>%
-      left_join_keep_first_only(UCD_techs, by = c("UCD_sector", "mode", "size.class", "UCD_technology", "UCD_fuel")) %>%
+      left_join(UCD_techs, by = c("UCD_sector", "mode", "size.class", "UCD_technology", "UCD_fuel")) %>%
       rename(stub.technology = tranTechnology) %>%
       # Currently, the market names for the fuels will be the same as the region
       mutate(market.name = region) %>%
       #kbn 2020-06-02 adding sce here (See description of changes using search string kbn 2020-06-02 Making changes to generate xmls for SSPs flexibly)
-      select(LEVEL2_DATA_NAMES[["StubTranTechCoef"]],sce) ->
-      L254.StubTranTechCoef # OUTPUT
+      select(LEVEL2_DATA_NAMES[["StubTranTechCoef"]],sce) %>%
+      group_by(region, supplysector, tranSubsector, stub.technology, year, minicam.energy.input, market.name, sce) %>%
+      summarise(coefficient = mean(coefficient)) %>%
+      ungroup() %>%
+      select(LEVEL2_DATA_NAMES[["StubTranTechCoef"]],sce)
 
     # L254.StubTechCalInput_passthru: calibrated input of passthrough technologies
     # First, need to calculate the service output for all tranTechnologies (= calInput * loadFactor * unit_conversion / (coef * unit conversion))
     #Switching to normal left_joins below since we have more
     #2020
 
-
-    L254.StubTranTechCalInput %>%
-
+    L254.StubTranTechOutput <- L254.StubTranTechCalInput %>%
       select(-contains("share")) %>%
       left_join(L254.StubTranTechLoadFactor, by = c("region", "supplysector", "tranSubsector",
                                                                    "stub.technology", "year", "sce")) %>%
@@ -693,8 +850,8 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
              output = calibrated.value * loadFactor * CONV_EJ_GJ / (coefficient * CONV_BTU_KJ),
              output = if_else(is.na(output),0,output)) %>%
       select(region, supplysector, tranSubsector, stub.technology, year, minicam.energy.input,
-             calibrated.value, loadFactor, coefficient, output,sce) ->
-      L254.StubTranTechOutput
+             calibrated.value, loadFactor, coefficient, output,sce)
+
 
     # The next step is to bind rows with all pass-through technologies on to this table
     A54.globaltech_passthru %>%
@@ -746,16 +903,19 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
     # PART F: NON-MOTORIZED TRANSPORTATION - SERVICE OUTPUT
     # L254.StubTechProd_nonmotor: service output of non-motorized transportation technologies
     # L154.out_mpkm_R_trn_nonmotor_Yh reports service output by GCAM region / non-motorized transport mode / year
-    L154.out_mpkm_R_trn_nonmotor_Yh %>%
+    L254.StubTechProd_nonmotor <- L154.out_mpkm_R_trn_nonmotor_Yh %>%
       mutate(sce= paste0("CORE")) %>%
       filter(year %in% MODEL_BASE_YEARS) %>%
       mutate(calOutputValue = round(value, energy.DIGITS_MPKM)) %>%
       left_join_error_no_match(GCAM_region_names, by = "GCAM_region_ID") %>%
-      left_join_error_no_match(A54.globaltech_nonmotor, by = c("mode" = "tranSubsector")) %>%
+      left_join(A54.globaltech_nonmotor, by = c("mode" = "tranSubsector")) %>%
       rename(stub.technology = technology, tranSubsector = mode) %>%
+      # Allocate total calibrated value across deciles
+      # TODO: For the moment, calOutputValue is allocated equally across groups
+      mutate(calOutputValue = calOutputValue / length(income_groups)) %>%
       # There is no need to match shareweights to the calOutputValue because no region should ever have a 0 here
-      select(LEVEL2_DATA_NAMES[["StubTranTech"]], year, calOutputValue,sce) ->
-      L254.StubTechProd_nonmotor
+      select(LEVEL2_DATA_NAMES[["StubTranTech"]], year, calOutputValue,sce)
+
 
     # L254.PerCapitaBased_trn: per-capita based flag for transportation final demand
     A54.demand %>%
@@ -792,10 +952,6 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
       filter(sce=="CORE") ->
       #kbn 2020-06-02 Base service values only needed for CORE.
       L254.BaseService_trn # OUTPUT
-
-
-
-
 
     # ===================================================
 

@@ -66,7 +66,6 @@ module_gcamusa_L171.nonghg_trn_USA <- function(command, ...) {
     MOVES_vmt_dist <- get_data(all_data, "gcam-usa/emissions/MOVES_VMT_dist")
     MOVES_vmt_dist_missing_mapping <- get_data(all_data, "gcam-usa/emissions/MOVES_VMT_dist_missing_mapping")
     MARKAL_LDV_EFs_gpm <- get_data(all_data, "gcam-usa/emissions/MARKAL_LDV_EFs_gpm")
-    L254.StubTranTechLoadFactor <- get_data(all_data, "L254.StubTranTechLoadFactor")
     trnMARKAL_UCD_mapping <- get_data(all_data, "gcam-usa/emissions/trnMARKAL_UCD_mapping")
     MARKAL_fuel_name_code <- get_data(all_data, "gcam-usa/emissions/MARKAL_fuel_name_code")
     GREET2014_LDV_CNG_EFs_tgEJ <- get_data(all_data, "gcam-usa/emissions/GREET2014_LDV_CNG_EFs_tgEJ")
@@ -78,6 +77,16 @@ module_gcamusa_L171.nonghg_trn_USA <- function(command, ...) {
     NEI_pollutant_mapping <- get_data(all_data, "gcam-usa/emissions/NEI_pollutant_mapping")
     MARKAL_GCAM_mapping <- get_data(all_data, "gcam-usa/emissions/MARKAL_GCAM_mapping")
     MOVES_motorcycle_data <- get_data(all_data, "gcam-usa/emissions/MOVES_motorcycle_data")
+
+    L254.StubTranTechLoadFactor <- get_data(all_data, "L254.StubTranTechLoadFactor") %>%
+      # Needs to be adjusted with multiple consumers:
+      mutate(supplysector = gsub("d10", "dx", supplysector)) %>%
+      mutate(agg.supplysector = gsub('.{3}$', '', supplysector)) %>%
+      mutate(supplysector = agg.supplysector) %>%
+      select(-agg.supplysector) %>%
+      distinct()
+
+
     # -----------------------------------------------------------------------------
 
     # Perform computations
