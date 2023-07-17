@@ -98,7 +98,7 @@ module_gcamusa_batch_transportation_USA_xml <- function(command, ...) {
     # Produce outputs
     create_xml(xml_name) %>%
       add_xml_data(L254.DeleteSupplysector_USAtrn, "DeleteSupplysector") %>%
-      add_xml_data(L254.DeleteFinalDemand_USAtrn, "DeleteFinalDemand") %>%
+      add_xml_data(L254.DeleteFinalDemand_USAtrn, "DeleteFinalDemand_trn") %>%
       add_logit_tables_xml(L254.Supplysector_trn_USA, "Supplysector") %>%
       add_xml_data(L254.FinalEnergyKeyword_trn_USA, "FinalEnergyKeyword") %>%
       add_logit_tables_xml(L254.tranSubsectorLogit_USA, "tranSubsectorLogit", "tranSubsector") %>%
@@ -116,13 +116,13 @@ module_gcamusa_batch_transportation_USA_xml <- function(command, ...) {
       add_xml_data(L254.StubTranTechLoadFactor_USA, "StubTranTechLoadFactor") %>%
       add_xml_data(L254.StubTranTechCost_USA, "StubTranTechCost") %>%
       add_xml_data(L254.StubTranTechCoef_USA, "StubTranTechCoef") %>%
-      add_xml_data(L254.PerCapitaBased_trn_USA, "PerCapitaBased") %>%
-      add_xml_data(L254.PriceElasticity_trn_USA, "PriceElasticity") %>%
-      add_xml_data(L254.IncomeElasticity_trn_USA, "IncomeElasticity") %>%
+      add_xml_data(L254.PerCapitaBased_trn_USA, "PerCapitaBased_trn") %>%
+      add_xml_data(L254.PriceElasticity_trn_USA, "PriceElasticity_trn") %>%
+      add_xml_data(L254.IncomeElasticity_trn_USA, "IncomeElasticity_trn") %>%
       add_xml_data(L254.StubTranTechCalInput_USA, "StubTranTechCalInput") %>%
       add_xml_data(L254.StubTranTechProd_nonmotor_USA, "StubTranTechProd") %>%
       add_xml_data(L254.StubTranTechCalInput_passthru_USA, "StubTranTechCalInput") %>%
-      add_xml_data(L254.BaseService_trn_USA, "BaseService") %>%
+      add_xml_data(L254.BaseService_trn_USA, "BaseService_trn") %>%
       add_precursors("L254.DeleteSupplysector_USAtrn",
                      "L254.DeleteFinalDemand_USAtrn",
                      "L254.Supplysector_trn_USA",

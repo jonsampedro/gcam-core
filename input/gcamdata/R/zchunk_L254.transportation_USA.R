@@ -191,14 +191,14 @@ module_gcamusa_L254.transportation_USA <- function(command, ...) {
     L254.StubTranTechCost <- remove.mult.groups(L254.StubTranTechCost)
     L254.StubTranTechCoef <- remove.mult.groups(L254.StubTranTechCoef)
 
-    # Some inputs use energy.final.demand instead of supplysector
+    # Some inputs use gcam.consumer instead of supplysector
     # They are adjusted with another function
-    remove.mult.groups.enDem <- function(df){
+    remove.mult.groups.gc <- function(df){
 
       df <- df %>%
-        mutate(energy.final.demand = gsub("d10", "dx", energy.final.demand)) %>%
-        mutate(agg.supplysector = if_else(grepl("pass", energy.final.demand) | grepl("aviation", energy.final.demand), gsub('.{3}$', '', energy.final.demand), energy.final.demand)) %>%
-        mutate(energy.final.demand = agg.supplysector) %>%
+        mutate(gcam.consumer = gsub("d10", "dx", gcam.consumer)) %>%
+        mutate(agg.supplysector = if_else(grepl("pass", gcam.consumer) | grepl("aviation", gcam.consumer), gsub('.{3}$', '', gcam.consumer), gcam.consumer)) %>%
+        mutate(gcam.consumer = agg.supplysector) %>%
         select(-agg.supplysector) %>%
         distinct()
 
@@ -206,9 +206,9 @@ module_gcamusa_L254.transportation_USA <- function(command, ...) {
 
     }
 
-    L254.PerCapitaBased_trn <- remove.mult.groups.enDem(L254.PerCapitaBased_trn)
-    L254.PriceElasticity_trn <- remove.mult.groups.enDem(L254.PriceElasticity_trn)
-    L254.IncomeElasticity_trn <- remove.mult.groups.enDem(L254.IncomeElasticity_trn)
+    L254.PerCapitaBased_trn <- remove.mult.groups.gc(L254.PerCapitaBased_trn)
+    L254.PriceElasticity_trn <- remove.mult.groups.gc(L254.PriceElasticity_trn)
+    L254.IncomeElasticity_trn <- remove.mult.groups.gc(L254.IncomeElasticity_trn)
 
 
     # Need to delete the transportation sector in the USA region (energy-final-demands and supplysectors)
@@ -221,11 +221,11 @@ module_gcamusa_L254.transportation_USA <- function(command, ...) {
       L254.DeleteSupplysector_USAtrn
 
     # L254.DeleteFinalDemand_USAtrn: Delete energy final demand sectors of the USA region
-    # Need to add multiple consumers, to delete the corect sectors
+    # Need to add multiple consumers, to delete the correct sectors
     get_data(all_data, "L254.PerCapitaBased_trn",strip_attributes = TRUE)%>% filter(sce %in% c("CORE")) %>%
       mutate(region = region) %>% # strip off attributes like title, etc.
       filter(region == gcam.USA_REGION) %>%
-      select(LEVEL2_DATA_NAMES[["EnergyFinalDemand"]],sce) ->
+      select(region, gcam.consumer, sce) ->
       L254.DeleteFinalDemand_USAtrn
 
     # Process tables at the USA region level to the states level.
@@ -406,8 +406,8 @@ module_gcamusa_L254.transportation_USA <- function(command, ...) {
       select(LEVEL2_DATA_NAMES[["StubTranTech"]], year, base.service = output) %>%
       bind_rows(L254.StubTranTechProd_nonmotor_USA %>%
                   select(LEVEL2_DATA_NAMES[["StubTranTech"]], year, base.service = calOutputValue)) %>%
-      left_join_error_no_match(select(A54.sector, supplysector, energy.final.demand), by = "supplysector") %>%
-      group_by(region, energy.final.demand, year) %>%
+      left_join_error_no_match(select(A54.sector, supplysector, gcam.consumer), by = "supplysector") %>%
+      group_by(region, gcam.consumer, year) %>%
       summarise(base.service = sum(base.service)) %>%
       ungroup()
 

@@ -3,7 +3,7 @@
 # Units: Unitless
 # Column types: cinn 
 # ----------
-energy.final.demand,perCapitaBased,price.elasticity,income.elasticity
+gcam.consumer,perCapitaBased,price.elasticity,income.elasticity
 trn_pass,1,-1.25,0.8
 trn_freight,0,-0.65,0.5
 trn_aviation_intl,1,-1,1

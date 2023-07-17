@@ -18,7 +18,7 @@
 #' \code{L254.GlobalTranTechSCurve}, \code{L254.StubTranTechCalInput}, \code{L254.StubTranTechLoadFactor},
 #' \code{L254.StubTranTechCost}, \code{L254.StubTranTechCoef}, \code{L254.StubTechCalInput_passthru},
 #' \code{L254.StubTechProd_nonmotor}, \code{L254.PerCapitaBased_trn}, \code{L254.PriceElasticity_trn},
-#' \code{L254.IncomeElasticity_trn}, \code{L254.BaseService_trn}. The corresponding file in the
+#' \code{L254.IncomeElasticity_trn}, \code{L254.BaseService_trn}. \code{L254.demandFn_trn}, \code{L244.SubregionalShares_trn} The corresponding file in the
 #' original data system was \code{L254.transportation_UCD.R} (energy level2).
 #' @details Due to the asymmetrical nature of the transportation sectors in the various regions, we can't simply write
 #' generic information to all regions. Instead, technology information is read from the global UCD transportation
@@ -55,6 +55,7 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
              FILE = "energy/A54.globaltranTech_shrwt",
              FILE = "energy/A54.globaltranTech_interp",
              FILE = "energy/A54.globaltranTech_retire",
+             FILE = "energy/A54.demandFn_trn",
              "L154.in_EJ_R_trn_m_sz_tech_F_Yh",
              "L154.cost_usdvkm_R_trn_m_sz_tech_F_Y",
              "L154.intensity_MJvkm_R_trn_m_sz_tech_F_Y",
@@ -64,7 +65,8 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
              FILE = "socioeconomics/income_shares",
              "L101.Pop_thous_R_Yh",
              "L102.pcgdp_thous90USD_Scen_R_Y",
-             FILE = "energy/A54.CalPrice_trn"))
+             FILE = "energy/A54.CalPrice_trn",
+             "L244.SubregionalShares"))
   } else if(command == driver.DECLARE_OUTPUTS) {
     return(c("L254.Supplysector_trn",
              "L254.FinalEnergyKeyword_trn",
@@ -99,7 +101,9 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
              "L254.PerCapitaBased_trn",
              "L254.PriceElasticity_trn",
              "L254.IncomeElasticity_trn",
-             "L254.BaseService_trn"))
+             "L254.BaseService_trn",
+             "L254.demandFn_trn",
+             "L244.SubregionalShares_trn"))
   } else if(command == driver.MAKE) {
 
     all_data <- list(...)[[1]]
@@ -122,6 +126,8 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
     A54.demand<-bind_rows(A54.demand,A54.demand_SSP1)
 
     A54.sector <- get_data(all_data, "energy/A54.sector",strip_attributes = TRUE)
+    A54.demandFn_trn <- get_data(all_data, "energy/A54.demandFn_trn",strip_attributes = TRUE)
+
     #kbn 2019-10-11 Insert code to use revised versions for subsectors below
     Size_class_New<- get_data(all_data, "energy/mappings/UCD_size_class_revisions",strip_attributes = TRUE) %>%
                      select(-UCD_region) %>%
@@ -192,6 +198,24 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
     # Load subregional shares:
     income_shares<-get_data(all_data, "socioeconomics/income_shares")
 
+    # Create subregional shares for transport
+    L244.SubregionalShares_trn <- get_data(all_data, "L244.SubregionalShares") %>%
+      filter(grepl("resid", gcam.consumer)) %>%
+      mutate(group = gsub("resid_", "", gcam.consumer)) %>%
+      select(-gcam.consumer) %>%
+      repeat_add_columns(tibble(unique(subset(A54.demand, perCapitaBased == 1, select = gcam.consumer)))) %>%
+      unite(gcam.consumer, c("gcam.consumer", "group"), sep = "_") %>%
+      # Add freight
+      bind_rows(get_data(all_data, "L244.SubregionalShares") %>%
+                  mutate(group = gsub("resid_", "", gcam.consumer)) %>%
+                  select(-gcam.consumer) %>%
+                  repeat_add_columns(tibble(unique(subset(A54.demand, perCapitaBased == 0, select = gcam.consumer)))) %>%
+                  select(-group) %>%
+                  mutate(subregional.income.share = 1,
+                         subregional.population.share = 1) %>%
+                  distinct()) %>%
+      select(LEVEL2_DATA_NAMES[["SubregionalShares"]])
+
     # ===================================================
     # First, clean and prepare data on current and future income distribution projections
     L144.income_shares<-income_shares %>%
@@ -258,22 +282,31 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
     # Some dataframes cannot be directly adjusted with the function:
     # A54.demand
     A54.demand <- A54.demand %>%
-      filter(grepl("pass", energy.final.demand) | grepl("aviation", energy.final.demand)) %>%
+      filter(grepl("pass", gcam.consumer) | grepl("aviation", gcam.consumer)) %>%
       repeat_add_columns(tibble(group = income_groups)) %>%
-      mutate(energy.final.demand = paste0(energy.final.demand, "_", group)) %>%
+      mutate(gcam.consumer = paste0(gcam.consumer, "_", group)) %>%
       select(-group) %>%
       bind_rows(A54.demand %>%
-                  filter(grepl("freight", energy.final.demand) | grepl("shipping", energy.final.demand)))
+                  filter(grepl("freight", gcam.consumer) | grepl("shipping", gcam.consumer)))
+
+    # A54.demandFN_trn
+    A54.demandFn_trn <- A54.demandFn_trn %>%
+      filter(grepl("pass", gcam.consumer) | grepl("aviation", gcam.consumer)) %>%
+      repeat_add_columns(tibble(group = income_groups)) %>%
+      mutate(gcam.consumer = paste0(gcam.consumer, "_", group)) %>%
+      select(-group) %>%
+      bind_rows(A54.demandFn_trn %>%
+                  filter(grepl("freight", gcam.consumer) | grepl("shipping", gcam.consumer)))
 
     # A54.sector
     A54.sector <- A54.sector %>%
-      filter(grepl("pass", energy.final.demand) | grepl("aviation", energy.final.demand)) %>%
+      filter(grepl("pass", gcam.consumer) | grepl("aviation", gcam.consumer)) %>%
       repeat_add_columns(tibble(group = income_groups)) %>%
-      mutate(energy.final.demand = paste0(energy.final.demand, "_", group),
+      mutate(gcam.consumer = paste0(gcam.consumer, "_", group),
              supplysector = paste0(supplysector, "_", group)) %>%
       select(-group) %>%
       bind_rows(A54.sector %>%
-                  filter(grepl("freight", energy.final.demand) | grepl("shipping", energy.final.demand)))
+                  filter(grepl("freight", gcam.consumer) | grepl("shipping", gcam.consumer)))
 
     # A54.globaltech_passthru
     A54.globaltech_passthru <- A54.globaltech_passthru %>%
@@ -321,7 +354,7 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
       repeat_add_columns(tibble(sce = c("CORE","SSP1", "SSP2", "SSP3", "SSP4", "SSP5"))) %>%
       filter(sce != "SSP1") %>%
       bind_rows(get_data(all_data, "energy/A54.demand_ssp1",strip_attributes = TRUE) %>% mutate(sce = "SSP1")) %>%
-      filter(grepl("pass", energy.final.demand) | grepl("aviation", energy.final.demand)) %>%
+      filter(grepl("pass", gcam.consumer) | grepl("aviation", gcam.consumer)) %>%
       repeat_add_columns(tibble(group = unique(L144.income_shares$group))) %>%
       mutate(year = MODEL_FINAL_BASE_YEAR) %>%
       repeat_add_columns(tibble(region = unique(GCAM_region_names$region))) %>%
@@ -334,28 +367,28 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
                                , by = c("sce", "group", "year", "region", "GCAM_region_ID")) %>%
       left_join_error_no_match(A54.CalPrice_trn %>%
                                  gather_years() %>%
-                                 rename(energy.final.demand = sector)
-                               , by = c("energy.final.demand", "year", "region")) %>%
+                                 rename(gcam.consumer = sector)
+                               , by = c("gcam.consumer", "year", "region")) %>%
       rename(price = value) %>%
       mutate(income_effect = pcGDP_thous90USD ^ income.elasticity,
              price_effect = price ^ price.elasticity) %>%
       # As we don't have price differences yet, we calculate shares based on the income effect
-      group_by(scenario, region, year, energy.final.demand) %>%
+      group_by(scenario, region, year, gcam.consumer) %>%
       mutate(income_effect_agg = sum(income_effect)) %>%
       ungroup() %>%
       mutate(serv.share = income_effect / income_effect_agg) %>%
-      select(scenario, region, year, energy.final.demand, group, serv.share) %>%
-      arrange(year, energy.final.demand, region)
+      select(scenario, region, year, gcam.consumer, group, serv.share) %>%
+      arrange(year, gcam.consumer, region)
 
       # add 1 shares for freight
     L154.trn_serv_shares_fr<-get_data(all_data, "energy/A54.demand",strip_attributes = TRUE) %>%
       repeat_add_columns(tibble(sce = c("CORE","SSP1", "SSP2", "SSP3", "SSP4", "SSP5"))) %>%
-      filter(grepl("freight", energy.final.demand) | grepl("shipping", energy.final.demand)) %>%
+      filter(grepl("freight", gcam.consumer) | grepl("shipping", gcam.consumer)) %>%
       mutate(year = MODEL_FINAL_BASE_YEAR) %>%
       repeat_add_columns(tibble(region = unique(GCAM_region_names$region))) %>%
       mutate(group = "x",
              serv.share = 1) %>%
-      select(scenario = sce, region, year, energy.final.demand, group, serv.share)
+      select(scenario = sce, region, year, gcam.consumer, group, serv.share)
 
     L154.trn_serv_shares <- bind_rows(L154.trn_serv_shares_pass, L154.trn_serv_shares_fr)
 
@@ -753,9 +786,9 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
     L254.StubTranTechCalInput_basetable <- L254.StubTranTechCalInput_basetable %>%
       left_join_error_no_match(adj_supsec, by = "supplysector") %>%
       left_join_error_no_match(L154.trn_serv_shares %>%
-                                 mutate(agg.supplysector = paste0(energy.final.demand, "_", group),
+                                 mutate(agg.supplysector = paste0(gcam.consumer, "_", group),
                                         agg.supplysector = gsub("_x", "", agg.supplysector)) %>%
-                                 select(-energy.final.demand, -group, -year) %>%
+                                 select(-gcam.consumer, -group, -year) %>%
                                  rename(sce = scenario)
                                , by = c("region", "agg.supplysector", "sce")) %>%
       select(-agg.supplysector) %>%
@@ -919,21 +952,26 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
 
     # L254.PerCapitaBased_trn: per-capita based flag for transportation final demand
     A54.demand %>%
-      write_to_all_regions(c(LEVEL2_DATA_NAMES[["PerCapitaBased"]],"sce"), GCAM_region_names = GCAM_region_names) %>% na.omit() ->
+      write_to_all_regions(c(LEVEL2_DATA_NAMES[["PerCapitaBased_trn"]],"sce"), GCAM_region_names = GCAM_region_names) %>% na.omit() ->
       L254.PerCapitaBased_trn # OUTPUT
+
+    A54.demandFn_trn %>%
+      repeat_add_columns(tibble(sce = c("CORE", "SSP1", "SSP2", "SSP3", "SSP4", "SSP5"))) %>%
+      write_to_all_regions(c(LEVEL2_DATA_NAMES[["DemandFunction_trn"]],"sce"), GCAM_region_names = GCAM_region_names) %>% na.omit() ->
+      L254.demandFn_trn # OUTPUT
 
     # L254.PriceElasticity_trn: price elasticity of transportation final demand")
     # Price elasticities are only applied to future periods. Application in base years will cause solution failure
     A54.demand %>%
       repeat_add_columns(tibble(year = MODEL_FUTURE_YEARS)) %>%
-      write_to_all_regions(c(LEVEL2_DATA_NAMES[["PriceElasticity"]],"sce"), GCAM_region_names = GCAM_region_names) %>% na.omit() ->
+      write_to_all_regions(c(LEVEL2_DATA_NAMES[["PriceElasticity_trn"]],"sce"), GCAM_region_names = GCAM_region_names) %>% na.omit() ->
       L254.PriceElasticity_trn # OUTPUT
 
     # L254.IncomeElasticity_trn: Income elasticity of transportation final demand
     # Income elasticities are only applied to future periods
     A54.demand %>%
       repeat_add_columns(tibble(year = MODEL_FUTURE_YEARS)) %>%
-      write_to_all_regions(c(LEVEL2_DATA_NAMES[["IncomeElasticity"]],"sce"), GCAM_region_names = GCAM_region_names) %>% na.omit() ->
+      write_to_all_regions(c(LEVEL2_DATA_NAMES[["IncomeElasticity_trn"]],"sce"), GCAM_region_names = GCAM_region_names) %>% na.omit() ->
       L254.IncomeElasticity_trn # OUTPUT
 
     # L254.BaseService_trn: Base-year service output of transportation final demand
@@ -946,7 +984,7 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
       # NAs will be introduced, so use left-join
       left_join(A54.sector, by = "supplysector") %>%
       # Aggregate base-year service output to region, energy.final.demand, and year
-      group_by(region, energy.final.demand, year,sce) %>%
+      group_by(region, gcam.consumer, year,sce) %>%
       summarise(base.service = sum(base.service)) %>%
       ungroup() %>%
       filter(sce=="CORE") ->
@@ -1245,6 +1283,16 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
       add_precursors("common/GCAM_region_names", "energy/A54.sector", "L154.out_mpkm_R_trn_nonmotor_Yh") ->
       L254.StubTechProd_nonmotor
 
+    L254.demandFn_trn
+
+    L254.demandFn_trn %>%
+      add_title("Final demand function") %>%
+      add_units("NA") %>%
+      add_comments("Definition of the function for transport demand") %>%
+      add_legacy_name("L254.demandFn_trn") %>%
+      add_precursors("common/GCAM_region_names", "energy/A54.demandFn_trn") ->
+      L254.demandFn_trn
+
     L254.PerCapitaBased_trn %>%
       add_title("Per-capita based flag for transportation final demand") %>%
       add_units("NA") %>%
@@ -1276,8 +1324,17 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
       add_legacy_name("L254.BaseService_trn") %>%
       add_precursors("common/GCAM_region_names", "energy/A54.sector", "energy/mappings/UCD_techs", "energy/mappings/UCD_techs_revised", "energy/mappings/UCD_size_class_revisions",
                      "L154.out_mpkm_R_trn_nonmotor_Yh", "L154.intensity_MJvkm_R_trn_m_sz_tech_F_Y",
-                     "L154.loadfactor_R_trn_m_sz_tech_F_Y", "L154.in_EJ_R_trn_m_sz_tech_F_Yh") ->
+                     "L154.loadfactor_R_trn_m_sz_tech_F_Y", "L154.in_EJ_R_trn_m_sz_tech_F_Yh",
+                     "energy/A54.CalPrice_trn", "socioeconomics/income_shares", "L101.Pop_thous_R_Yh", "L102.pcgdp_thous90USD_Scen_R_Y") ->
       L254.BaseService_trn
+
+    L244.SubregionalShares_trn %>%
+      add_title("Subregional income shares for trn gcam.consumers") %>%
+      add_units("share") %>%
+      add_comments("comments describing how data generated") %>%
+      add_legacy_name("L244.SubregionalShares_trn") %>%
+      add_precursors("common/GCAM_region_names", "L244.SubregionalShares") ->
+      L244.SubregionalShares_trn
 
     return_data(L254.Supplysector_trn, L254.FinalEnergyKeyword_trn, L254.tranSubsectorLogit,
                 L254.tranSubsectorShrwt, L254.tranSubsectorShrwtFllt, L254.tranSubsectorInterp,
@@ -1289,7 +1346,7 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
                 L254.GlobalTranTechSCurve, L254.GlobalTranTechProfitShutdown, L254.StubTranTechCalInput, L254.StubTranTechLoadFactor,
                 L254.StubTranTechCost, L254.StubTranTechCoef, L254.StubTechCalInput_passthru,
                 L254.StubTechProd_nonmotor, L254.PerCapitaBased_trn, L254.PriceElasticity_trn,
-                L254.IncomeElasticity_trn, L254.BaseService_trn)
+                L254.IncomeElasticity_trn, L254.BaseService_trn, L254.demandFn_trn, L244.SubregionalShares_trn)
   } else {
     stop("Unknown command")
   }
