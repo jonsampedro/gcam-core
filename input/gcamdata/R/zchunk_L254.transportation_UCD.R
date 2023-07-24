@@ -18,7 +18,9 @@
 #' \code{L254.GlobalTranTechSCurve}, \code{L254.StubTranTechCalInput}, \code{L254.StubTranTechLoadFactor},
 #' \code{L254.StubTranTechCost}, \code{L254.StubTranTechCoef}, \code{L254.StubTechCalInput_passthru},
 #' \code{L254.StubTechProd_nonmotor}, \code{L254.PerCapitaBased_trn}, \code{L254.PriceElasticity_trn_fr}, \code{L254.PriceElasticity_trn_pass},
-#' \code{L254.IncomeElasticity_trn}, \code{L254.BaseService_trn_fr}, \code{L254.BaseService_trn_pass}. \code{L254.demandFn_trn}, \code{L244.SubregionalShares_trn} The corresponding file in the
+#' \code{L254.IncomeElasticity_trn}, \code{L254.BaseService_trn_fr}, \code{L254.BaseService_trn_pass}. \code{L254.demandFn_trn},
+#'  \code{L244.SubregionalShares_trn} ,\code{L254.demandFn_trn_coef}
+#'  The corresponding file in the
 #' original data system was \code{L254.transportation_UCD.R} (energy level2).
 #' @details Due to the asymmetrical nature of the transportation sectors in the various regions, we can't simply write
 #' generic information to all regions. Instead, technology information is read from the global UCD transportation
@@ -108,7 +110,8 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
              "L254.BaseService_trn_fr",
              "L254.BaseService_trn_pass",
              "L254.demandFn_trn",
-             "L244.SubregionalShares_trn"))
+             "L244.SubregionalShares_trn",
+             "L254.demandFn_trn_coef"))
   } else if(command == driver.MAKE) {
 
     all_data <- list(...)[[1]]
@@ -1032,10 +1035,65 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
     # D_(r,t,i)=a*Y_(r,t,i)*(P_(r,t)/P_(r,t-1) )^Prelast
 
     # We need to prepare the dataframe for the estimation of the a parameter
-    # trn_data <-
+     trn_data <- L254.BaseService_trn_pass %>%
+      mutate(gcam.consumer = gsub("_d", "-d", gcam.consumer)) %>%
+      separate(gcam.consumer, c("gcam.consumer", "group"), sep = "-") %>%
+      left_join_error_no_match(GCAM_region_names, by = "region") %>%
+      left_join_error_no_match(L102.pcgdp_thous90USD_Scen_R_Y_gr %>% filter(scenario == socioeconomics.BASE_GDP_SCENARIO),
+                               by = c("GCAM_region_ID", "region", "year", "group")) %>%
+      # Add prices
+      left_join(A54.CalPrice_trn %>%
+                                 gather_years() %>%
+                                 rename(gcam.consumer = sector),
+                                by = c("region", "gcam.consumer", "year")) %>%
+      rename(price = value) %>%
+      group_by(scenario, region, GCAM_region_ID, gcam.consumer, group) %>%
+      # extrapolate 1975 prices
+      mutate(price = if_else(is.na(price), approx_fun(year, price, rule = 2), price)) %>%
+      ungroup() %>%
+      # add Prelast
+      left_join_error_no_match(L254.PriceElasticity_trn_pass %>%
+                                 select(-year) %>%
+                                 distinct() %>%
+                                 mutate(gcam.consumer = gsub("_d", "-d", gcam.consumer)) %>%
+                                 separate(gcam.consumer, c("gcam.consumer", "group"), sep = "-"),
+                               by = c("region", "gcam.consumer", "group", "sce")) %>%
+      # add pop
+      left_join_error_no_match(L101.Pop_thous_R_Yh, by = c("year", "GCAM_region_ID")) %>%
+      rename(pop = value) %>%
+      mutate(pop = pop * 1E3 * (1 / length(income_groups))) %>%
+      # calculate lag prices
+      group_by(scenario, region, GCAM_region_ID, gcam.consumer, group) %>%
+      mutate(lag_price = lag(price)) %>%
+      mutate(lag_price = if_else(is.na(lag_price), approx_fun(year, lag_price, rule = 2), lag_price)) %>%
+      ungroup()
 
+    #-----------------------------------------
 
+    # Estimation of the model:
+    trn_data_list <- split(trn_data, list(trn_data$region, trn_data$gcam.consumer))
 
+    fit_pass_fn <- function(df) {
+
+      formula <- "base.service ~ a * pcGDP_thous90USD * price * pop"
+      start.value <- c(a = 1)
+
+      fit_pass_df <- nls(formula, df, start.value)
+
+      df <- df %>%
+        mutate(coef_trn = coef(fit_pass_df))
+
+      return(invisible(df))
+
+    }
+
+    trn_data_fin <- bind_rows(lapply(trn_data_list, fit_pass_fn))
+
+    # Get the coefficients to write them to the xml and be read by the trn-function:
+    L254.demandFn_trn_coef <- trn_data_fin %>%
+      unite(gcam.consumer, c("gcam.consumer", "group"), sep = "_") %>%
+      select(LEVEL2_DATA_NAMES[["DemandFunction_trn_coef"]]) %>%
+      distinct()
 
 
 
@@ -1403,6 +1461,14 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
       add_precursors("common/GCAM_region_names", "L244.SubregionalShares") ->
       L244.SubregionalShares_trn
 
+    L254.demandFn_trn_coef %>%
+      add_title("Coefficient for the trn-function") %>%
+      add_units("unitless") %>%
+      add_comments("estimated") %>%
+      add_legacy_name("L254.demandFn_trn_coef") %>%
+      add_precursors("common/GCAM_region_names", "L102.pcgdp_thous90USD_Scen_R_Y") ->
+      L254.demandFn_trn_coef
+
     return_data(L254.Supplysector_trn, L254.FinalEnergyKeyword_trn, L254.tranSubsectorLogit,
                 L254.tranSubsectorShrwt, L254.tranSubsectorShrwtFllt, L254.tranSubsectorInterp,
                 L254.tranSubsectorInterpTo, L254.tranSubsectorSpeed, L254.tranSubsectorSpeed_passthru,
@@ -1413,7 +1479,8 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
                 L254.GlobalTranTechSCurve, L254.GlobalTranTechProfitShutdown, L254.StubTranTechCalInput, L254.StubTranTechLoadFactor,
                 L254.StubTranTechCost, L254.StubTranTechCoef, L254.StubTechCalInput_passthru,
                 L254.StubTechProd_nonmotor, L254.PerCapitaBased_trn, L254.PriceElasticity_trn_fr, L254.PriceElasticity_trn_pass,
-                L254.IncomeElasticity_trn, L254.BaseService_trn_fr, L254.BaseService_trn_pass, L254.demandFn_trn, L244.SubregionalShares_trn)
+                L254.IncomeElasticity_trn, L254.BaseService_trn_fr, L254.BaseService_trn_pass, L254.demandFn_trn,
+                L244.SubregionalShares_trn, L254.demandFn_trn_coef)
   } else {
     stop("Unknown command")
   }

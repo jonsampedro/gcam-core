@@ -326,6 +326,7 @@ generate_level2_data_names <- function() {
   level2_data_names[["GenericServiceImpedance"]] <- c("region", "gcam.consumer", "nodeInput", "building.node.input", "building.service.input", "satiation-impedance")
   level2_data_names[["DeleteFinalDemand"]] <- level2_data_names[["EnergyFinalDemand"]]
   level2_data_names[["DeleteFinalDemand_trn"]] <- c("region", "gcam.consumer")
+  level2_data_names[["DemandFunction_trn_coef"]] <- c("region", "gcam.consumer", "coef_trn")
   level2_data_names[["DeleteConsumer"]] <- c("region", "gcam.consumer")
   level2_data_names[["DeleteThermalService"]] <- c("region", "gcam.consumer", "nodeInput", "building.node.input", "thermal.building.service.input", "supplysector")
   level2_data_names[["DeleteGenericService"]] <- c("region", "gcam.consumer", "nodeInput", "building.node.input", "building.service.input", "supplysector")

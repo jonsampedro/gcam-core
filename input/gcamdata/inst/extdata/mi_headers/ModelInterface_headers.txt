@@ -469,6 +469,8 @@ DeleteFinalDemand, world/+{name}region, region/+{name; delete=1}energy-final-dem
 
 DeleteFinalDemand_trn, world/+{name}region, region/+{name; delete=1}gcam-consumer, scenario, scenario/world
 
+DemandFunction_trn_coef, world/+{name}region, region/+{name}gcam-consumer, gcam-consumer/+coef_trn, scenario, scenario/world
+
 #####, BUILDING FINAL DEMAND
 
 DeleteConsumer, world/+{name}region, region/+{name; delete=1}gcam-consumer, scenario, scenario/world

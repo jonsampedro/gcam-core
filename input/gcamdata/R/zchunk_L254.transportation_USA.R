@@ -678,7 +678,7 @@ module_gcamusa_L254.transportation_USA <- function(command, ...) {
       add_units("NA") %>%
       add_comments("Definition of the function for transport demand") %>%
       add_legacy_name("L254.demandFn_trn_USA") %>%
-      add_precursors("common/GCAM_region_names", "energy/A54.demandFn_trn") ->
+      add_precursors("L254.demandFn_trn") ->
       L254.demandFn_trn_USA
 
     L254.StubTranTechCalInput_USA %>%
