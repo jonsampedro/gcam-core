@@ -46,8 +46,7 @@ module_energy_batch_transportation_UCD_CORE_xml <- function(command, ...) {
              "L254.StubTechProd_nonmotor",
              "L244.SubregionalShares_trn",
              "L254.PerCapitaBased_trn",
-             "L254.PriceElasticity_trn_fr",
-             "L254.PriceElasticity_trn_pass",
+             "L254.PriceElasticity_trn",
              "L254.IncomeElasticity_trn",
              "L254.BaseService_trn_fr",
              "L254.BaseService_trn_pass",
@@ -100,8 +99,7 @@ module_energy_batch_transportation_UCD_CORE_xml <- function(command, ...) {
     L254.StubTechCalInput_passthru <- get_data(all_data, "L254.StubTechCalInput_passthru")
     L254.StubTechProd_nonmotor <- get_data(all_data, "L254.StubTechProd_nonmotor")
     L254.PerCapitaBased_trn <- get_data(all_data, "L254.PerCapitaBased_trn")
-    L254.PriceElasticity_trn_fr <- get_data(all_data, "L254.PriceElasticity_trn_fr")
-    L254.PriceElasticity_trn_pass <- get_data(all_data, "L254.PriceElasticity_trn_pass")
+    L254.PriceElasticity_trn <- get_data(all_data, "L254.PriceElasticity_trn")
     L254.IncomeElasticity_trn <- get_data(all_data, "L254.IncomeElasticity_trn")
     L254.BaseService_trn_fr <- get_data(all_data, "L254.BaseService_trn_fr")
     L254.BaseService_trn_pass <- get_data(all_data, "L254.BaseService_trn_pass")
@@ -138,15 +136,13 @@ module_energy_batch_transportation_UCD_CORE_xml <- function(command, ...) {
       L254.tranSubsectorVOTT_SSP<- L254.tranSubsectorVOTT %>% filter(sce==i)
       L254.tranSubsectorFuelPref_SSP<-L254.tranSubsectorFuelPref %>% filter(sce==i)
       L254.PerCapitaBased_trn_SSP<- L254.PerCapitaBased_trn %>% filter(sce==i)
-      L254.PriceElasticity_trn_fr_SSP <- L254.PriceElasticity_trn_fr %>%  filter(sce==i)
-      L254.PriceElasticity_trn_pass_SSP <- L254.PriceElasticity_trn_pass %>%  filter(sce==i)
+      L254.PriceElasticity_trn_SSP <- L254.PriceElasticity_trn %>%  filter(sce==i)
       L254.IncomeElasticity_trn_SSP <- L254.IncomeElasticity_trn %>% filter(sce==i)}else{
         L254.tranSubsectorSpeed_passthru_SSP <- L254.tranSubsectorSpeed_passthru %>% filter(sce=="CORE")
         L254.tranSubsectorVOTT_SSP<- L254.tranSubsectorVOTT %>% filter(sce=="CORE")
         L254.tranSubsectorFuelPref_SSP<-L254.tranSubsectorFuelPref %>% filter(sce=="CORE")
         L254.PerCapitaBased_trn_SSP <- L254.PerCapitaBased_trn %>% filter(sce=="CORE")
-        L254.PriceElasticity_trn_fr_SSP <- L254.PriceElasticity_trn_fr %>% filter(sce=="CORE")
-        L254.PriceElasticity_trn_pass_SSP <- L254.PriceElasticity_trn_pass %>% filter(sce=="CORE")
+        L254.PriceElasticity_trn_SSP <- L254.PriceElasticity_trn %>% filter(sce=="CORE")
         L254.IncomeElasticity_trn_SSP <- L254.IncomeElasticity_trn %>% filter(sce=="CORE")
       }
 
@@ -217,8 +213,7 @@ module_energy_batch_transportation_UCD_CORE_xml <- function(command, ...) {
         add_xml_data(L254.StubTechProd_nonmotor, "StubTranTechProd") %>%
         add_xml_data(L244.SubregionalShares_trn, "SubregionalShares") %>%
         add_xml_data(L254.PerCapitaBased_trn_SSP, "PerCapitaBased") %>%
-        add_xml_data(L254.PriceElasticity_trn_fr_SSP, "PriceElasticity") %>%
-        add_xml_data(L254.PriceElasticity_trn_pass_SSP, "PriceElasticity_trn") %>%
+        add_xml_data(L254.PriceElasticity_trn_SSP, "PriceElasticity") %>%
         add_xml_data(L254.IncomeElasticity_trn_SSP, "IncomeElasticity") %>%
         add_xml_data(L254.BaseService_trn_fr_SSP, "BaseService") %>%
         add_xml_data(L254.BaseService_trn_pass_SSP, "BaseService_trn") %>%
@@ -253,8 +248,7 @@ module_energy_batch_transportation_UCD_CORE_xml <- function(command, ...) {
                        "L254.StubTechCalInput_passthru",
                        "L254.StubTechProd_nonmotor",
                        "L254.PerCapitaBased_trn",
-                       "L254.PriceElasticity_trn_fr",
-                       "L254.PriceElasticity_trn_pass",
+                       "L254.PriceElasticity_trn",
                        "L254.IncomeElasticity_trn",
                        "L254.BaseService_trn_fr",
                        "L254.BaseService_trn_pass",

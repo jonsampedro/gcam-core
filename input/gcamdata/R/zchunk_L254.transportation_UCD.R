@@ -17,7 +17,7 @@
 #' \code{L254.GlobalRenewTech_nonmotor}, \code{L254.GlobalTranTechInterp}, \code{L254.GlobalTranTechShrwt},
 #' \code{L254.GlobalTranTechSCurve}, \code{L254.StubTranTechCalInput}, \code{L254.StubTranTechLoadFactor},
 #' \code{L254.StubTranTechCost}, \code{L254.StubTranTechCoef}, \code{L254.StubTechCalInput_passthru},
-#' \code{L254.StubTechProd_nonmotor}, \code{L254.PerCapitaBased_trn}, \code{L254.PriceElasticity_trn_fr}, \code{L254.PriceElasticity_trn_pass},
+#' \code{L254.StubTechProd_nonmotor}, \code{L254.PerCapitaBased_trn}, \code{L254.PriceElasticity_trn},
 #' \code{L254.IncomeElasticity_trn}, \code{L254.BaseService_trn_fr}, \code{L254.BaseService_trn_pass}. \code{L254.demandFn_trn},
 #'  \code{L244.SubregionalShares_trn} ,\code{L254.demandFn_trn_coef}
 #'  The corresponding file in the
@@ -104,8 +104,7 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
              "L254.StubTechCalInput_passthru",
              "L254.StubTechProd_nonmotor",
              "L254.PerCapitaBased_trn",
-             "L254.PriceElasticity_trn_fr",
-             "L254.PriceElasticity_trn_pass",
+             "L254.PriceElasticity_trn",
              "L254.IncomeElasticity_trn",
              "L254.BaseService_trn_fr",
              "L254.BaseService_trn_pass",
@@ -982,7 +981,7 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
     A54.demand_pass %>%
       repeat_add_columns(tibble(year = MODEL_FUTURE_YEARS)) %>%
       write_to_all_regions(c(LEVEL2_DATA_NAMES[["PriceElasticity_trn"]],"sce"), GCAM_region_names = GCAM_region_names) %>% na.omit() ->
-      L254.PriceElasticity_trn_pass # OUTPUT
+      L254.PriceElasticity_trn_pass
 
     # L254.IncomeElasticity_trn: Income elasticity of transportation final demand
     # Income elasticities are only applied to future periods
@@ -1031,8 +1030,8 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
     # Modify the demand function, to be consistent when having multiple consumers
     # The adjusted demand function needs to ensure that all income groups demand the same output at equal income level:
     # - Cannot consider demand in previous year
-    # - It should include "absolute" per capita income instead of income change
-    # D_(r,t,i)=a*Y_(r,t,i)*(P_(r,t)/P_(r,t-1) )^Prelast
+    # - It should include "absolute" per capita income and prices instead of change
+    # D_(r,t,i)=a * Y_(r,t,i) * P_(r,t,i)
 
     # We need to prepare the dataframe for the estimation of the a parameter
      trn_data <- L254.BaseService_trn_pass %>%
@@ -1410,17 +1409,10 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
       add_title("Price elasticity of transportation final demand") %>%
       add_units("Unitless") %>%
       add_comments("Price elasticity information written for all GCAM regions and model future years") %>%
-      add_legacy_name("L254.PriceElasticity_trn_fr") %>%
+      add_legacy_name("L254.PriceElasticity_trn") %>%
       add_precursors("common/GCAM_region_names", "energy/A54.demand", "energy/A54.demand_ssp1") ->
-      L254.PriceElasticity_trn_fr
+      L254.PriceElasticity_trn
 
-    L254.PriceElasticity_trn_pass %>%
-      add_title("Price elasticity of transportation final demand") %>%
-      add_units("Unitless") %>%
-      add_comments("Price elasticity information written for all GCAM regions and model future years") %>%
-      add_legacy_name("L254.PriceElasticity_trn_pass") %>%
-      add_precursors("common/GCAM_region_names", "energy/A54.demand_pass", "energy/A54.demand_ssp1_pass") ->
-      L254.PriceElasticity_trn_pass
 
     L254.IncomeElasticity_trn %>%
       add_title("Income elasticity of transportation final demand") %>%
@@ -1478,7 +1470,7 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
                 L254.GlobalRenewTech_nonmotor, L254.GlobalTranTechInterp, L254.GlobalTranTechShrwt,
                 L254.GlobalTranTechSCurve, L254.GlobalTranTechProfitShutdown, L254.StubTranTechCalInput, L254.StubTranTechLoadFactor,
                 L254.StubTranTechCost, L254.StubTranTechCoef, L254.StubTechCalInput_passthru,
-                L254.StubTechProd_nonmotor, L254.PerCapitaBased_trn, L254.PriceElasticity_trn_fr, L254.PriceElasticity_trn_pass,
+                L254.StubTechProd_nonmotor, L254.PerCapitaBased_trn, L254.PriceElasticity_trn,
                 L254.IncomeElasticity_trn, L254.BaseService_trn_fr, L254.BaseService_trn_pass, L254.demandFn_trn,
                 L244.SubregionalShares_trn, L254.demandFn_trn_coef)
   } else {

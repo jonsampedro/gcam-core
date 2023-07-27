@@ -15,7 +15,7 @@
 #' \code{L254.tranSubsectorSpeed_nonmotor_USA}, \code{L254.tranSubsectorVOTT_USA}, \code{L254.tranSubsectorFuelPref_USA},
 #' \code{L254.StubTranTech_USA}, \code{L254.StubTranTech_passthru_USA}, \code{L254.StubTranTech_nonmotor_USA},
 #' \code{L254.StubTranTechLoadFactor_USA}, \code{L254.StubTranTechCost_USA}, \code{L254.StubTranTechCoef_USA},
-#' \code{L254.PerCapitaBased_trn_USA}, \code{L254.PriceElasticity_trn_fr_USA}, \code{L254.PriceElasticity_trn_pass_USA}, \code{L254.IncomeElasticity_trn_USA},
+#' \code{L254.PerCapitaBased_trn_USA}, \code{L254.PriceElasticity_trn_USA}, \code{L254.IncomeElasticity_trn_USA},
 #' \code{L254.StubTranTechCalInput_USA}, \code{L254.StubTranTechProd_nonmotor_USA}, \code{L254.StubTranTechCalInput_passthru_USA},
 #' \code{L254.BaseService_trn_USA_fr}, \code{L254.BaseService_trn_USA_pass}, \code{L254.demandFn_trn_USA}.
 #' The corresponding file in the original data system was \code{L254.transportation_USA.R} (gcam-usa level2).
@@ -64,12 +64,12 @@ module_gcamusa_L254.transportation_USA <- function(command, ...) {
              "L254.StubTranTechCost",
              "L254.StubTranTechCoef",
              "L254.PerCapitaBased_trn",
-             "L254.PriceElasticity_trn_fr",
-             "L254.PriceElasticity_trn_pass",
+             "L254.PriceElasticity_trn",
              "L254.IncomeElasticity_trn",
              "L154.in_EJ_state_trn_m_sz_tech_F",
              "L154.out_mpkm_state_trn_nonmotor_Yh",
-             "L254.demandFn_trn"))
+             "L254.demandFn_trn",
+             "L254.BaseService_trn_pass"))
   } else if(command == driver.DECLARE_OUTPUTS) {
     return(c("L254.DeleteSupplysector_USAtrn",
              "L254.DeleteFinalDemand_USAtrn",
@@ -92,8 +92,7 @@ module_gcamusa_L254.transportation_USA <- function(command, ...) {
              "L254.StubTranTechCost_USA",
              "L254.StubTranTechCoef_USA",
              "L254.PerCapitaBased_trn_USA",
-             "L254.PriceElasticity_trn_fr_USA",
-             "L254.PriceElasticity_trn_pass_USA",
+             "L254.PriceElasticity_trn_USA",
              "L254.IncomeElasticity_trn_USA",
              "L254.StubTranTechCalInput_USA",
              "L254.StubTranTechProd_nonmotor_USA",
@@ -159,12 +158,12 @@ module_gcamusa_L254.transportation_USA <- function(command, ...) {
     L254.StubTranTechCost <- get_data(all_data, "L254.StubTranTechCost",strip_attributes = TRUE)%>% filter(sce %in% c("CORE"))
     L254.StubTranTechCoef <- get_data(all_data, "L254.StubTranTechCoef",strip_attributes = TRUE)%>% filter(sce %in% c("CORE"))
     L254.PerCapitaBased_trn <- get_data(all_data, "L254.PerCapitaBased_trn",strip_attributes = TRUE)%>% filter(sce %in% c("CORE"))
-    L254.PriceElasticity_trn_fr <- get_data(all_data, "L254.PriceElasticity_trn_fr",strip_attributes = TRUE)%>% filter(sce %in% c("CORE"))
-    L254.PriceElasticity_trn_pass <- get_data(all_data, "L254.PriceElasticity_trn_pass",strip_attributes = TRUE)%>% filter(sce %in% c("CORE"))
+    L254.PriceElasticity_trn <- get_data(all_data, "L254.PriceElasticity_trn",strip_attributes = TRUE)%>% filter(sce %in% c("CORE"))
     L254.IncomeElasticity_trn <- get_data(all_data, "L254.IncomeElasticity_trn",strip_attributes = TRUE)%>% filter(sce %in% c("CORE"))
     L154.in_EJ_state_trn_m_sz_tech_F <- get_data(all_data, "L154.in_EJ_state_trn_m_sz_tech_F",strip_attributes = TRUE)
     L154.out_mpkm_state_trn_nonmotor_Yh <- get_data(all_data, "L154.out_mpkm_state_trn_nonmotor_Yh",strip_attributes = TRUE)
     L254.demandFn_trn <- get_data(all_data, "L254.demandFn_trn",strip_attributes = TRUE)
+    L254.BaseService_trn_pass_sector <- get_data(all_data, "L254.BaseService_trn_pass",strip_attributes = TRUE)
 
     # First delete multiple consumers as they are not applied to gcamusa
     # create a function:
@@ -216,7 +215,6 @@ module_gcamusa_L254.transportation_USA <- function(command, ...) {
 
     }
 
-    L254.PriceElasticity_trn_pass <- remove.mult.groups.gc(L254.PriceElasticity_trn_pass)
     L254.demandFn_trn <- remove.mult.groups.gc(L254.demandFn_trn)
 
     remove.mult.groups.efd <- function(df){
@@ -233,7 +231,7 @@ module_gcamusa_L254.transportation_USA <- function(command, ...) {
     }
 
     L254.PerCapitaBased_trn <- remove.mult.groups.efd(L254.PerCapitaBased_trn)
-    L254.PriceElasticity_trn_fr <- remove.mult.groups.efd(L254.PriceElasticity_trn_fr)
+    L254.PriceElasticity_trn <- remove.mult.groups.efd(L254.PriceElasticity_trn)
     L254.IncomeElasticity_trn <- remove.mult.groups.efd(L254.IncomeElasticity_trn)
 
 
@@ -255,7 +253,7 @@ module_gcamusa_L254.transportation_USA <- function(command, ...) {
       L254.DeleteFinalDemand_USAtrn
 
     # L254.Delete_Cons_USAtrn: Delete energy final demand sectors of the USA region
-    get_data(all_data, "L254.PriceElasticity_trn_pass", strip_attributes = TRUE)%>% filter(sce %in% c("CORE")) %>%
+    L254.BaseService_trn_pass_sector %>% filter(sce %in% c("CORE")) %>%
       mutate(region = region) %>% # strip off attributes like title, etc.
       filter(region == gcam.USA_REGION) %>%
       select(region, gcam.consumer, sce) %>%
@@ -319,8 +317,7 @@ module_gcamusa_L254.transportation_USA <- function(command, ...) {
       L254.StubTranTechCoef_USA
 
     process_USA_to_states(L254.PerCapitaBased_trn) -> L254.PerCapitaBased_trn_USA
-    process_USA_to_states(L254.PriceElasticity_trn_fr) -> L254.PriceElasticity_trn_fr_USA
-    process_USA_to_states(L254.PriceElasticity_trn_pass) -> L254.PriceElasticity_trn_pass_USA
+    process_USA_to_states(L254.PriceElasticity_trn) -> L254.PriceElasticity_trn_USA
     process_USA_to_states(L254.IncomeElasticity_trn) -> L254.IncomeElasticity_trn_USA
     process_USA_to_states(L254.demandFn_trn) -> L254.demandFn_trn_USA
 
@@ -481,7 +478,7 @@ module_gcamusa_L254.transportation_USA <- function(command, ...) {
       add_units("NA") %>%
       add_comments("Delete energy final demand sectors of the full USA region") %>%
       add_legacy_name("L254.Delete_Cons_USAtrn") %>%
-      add_precursors("L254.PerCapitaBased_trn") ->
+      add_precursors("L254.BaseService_trn_pass") ->
       L254.Delete_Cons_USAtrn
 
     L254.Supplysector_trn_USA %>%
@@ -648,21 +645,14 @@ module_gcamusa_L254.transportation_USA <- function(command, ...) {
                      "L254.PerCapitaBased_trn") ->
       L254.PerCapitaBased_trn_USA
 
-    L254.PriceElasticity_trn_fr_USA %>%
+    L254.PriceElasticity_trn_USA %>%
       add_title("Price elasticity of transportation final demand in the US states") %>%
       add_units("Unitless") %>%
       add_comments("The same USA region values are repeated for each state") %>%
-      add_legacy_name("L254.PriceElasticity_trn_fr_USA") %>%
+      add_legacy_name("L254.PriceElasticity_trn_USA") %>%
       add_precursors("gcam-usa/states_subregions") ->
-      L254.PriceElasticity_trn_fr_USA
+      L254.PriceElasticity_trn_USA
 
-    L254.PriceElasticity_trn_pass_USA %>%
-      add_title("Price elasticity of transportation final demand in the US states") %>%
-      add_units("Unitless") %>%
-      add_comments("The same USA region values are repeated for each state") %>%
-      add_legacy_name("L254.PriceElasticity_trn_pass_USA") %>%
-      add_precursors("gcam-usa/states_subregions") ->
-      L254.PriceElasticity_trn_pass_USA
 
     L254.IncomeElasticity_trn_USA %>%
       add_title("Income elasticity of transportation final demand in the US states") %>%
@@ -773,8 +763,7 @@ module_gcamusa_L254.transportation_USA <- function(command, ...) {
                 L254.StubTranTechCost_USA,
                 L254.StubTranTechCoef_USA,
                 L254.PerCapitaBased_trn_USA,
-                L254.PriceElasticity_trn_fr_USA,
-                L254.PriceElasticity_trn_pass_USA,
+                L254.PriceElasticity_trn_USA,
                 L254.IncomeElasticity_trn_USA,
                 L254.StubTranTechCalInput_USA, L254.StubTranTechProd_nonmotor_USA,
                 L254.StubTranTechCalInput_passthru_USA,

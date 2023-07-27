@@ -33,8 +33,7 @@ module_gcamusa_batch_transportation_USA_xml <- function(command, ...) {
              "L254.StubTranTechCost_USA",
              "L254.StubTranTechCoef_USA",
              "L254.PerCapitaBased_trn_USA",
-             "L254.PriceElasticity_trn_fr_USA",
-             "L254.PriceElasticity_trn_pass_USA",
+             "L254.PriceElasticity_trn_USA",
              "L254.IncomeElasticity_trn_USA",
              "L254.StubTranTechCalInput_USA",
              "L254.StubTranTechProd_nonmotor_USA",
@@ -83,8 +82,7 @@ module_gcamusa_batch_transportation_USA_xml <- function(command, ...) {
     L254.StubTranTechCost_USA <- get_data(all_data, "L254.StubTranTechCost_USA")%>% filter(sce==i)
     L254.StubTranTechCoef_USA <- get_data(all_data, "L254.StubTranTechCoef_USA")%>% filter(sce==i)
     L254.PerCapitaBased_trn_USA <- get_data(all_data, "L254.PerCapitaBased_trn_USA") %>% filter(sce==i)
-    L254.PriceElasticity_trn_fr_USA <- get_data(all_data, "L254.PriceElasticity_trn_fr_USA") %>% filter(sce==i)
-    L254.PriceElasticity_trn_pass_USA <- get_data(all_data, "L254.PriceElasticity_trn_pass_USA") %>% filter(sce==i)
+    L254.PriceElasticity_trn_USA <- get_data(all_data, "L254.PriceElasticity_trn_USA") %>% filter(sce==i)
     L254.IncomeElasticity_trn_USA <- get_data(all_data, "L254.IncomeElasticity_trn_USA")%>% filter(sce==i)
     L254.StubTranTechCalInput_USA <- get_data(all_data, "L254.StubTranTechCalInput_USA") %>% filter(sce==i)
     L254.StubTranTechProd_nonmotor_USA <- get_data(all_data, "L254.StubTranTechProd_nonmotor_USA")
@@ -126,8 +124,7 @@ module_gcamusa_batch_transportation_USA_xml <- function(command, ...) {
       add_xml_data(L254.StubTranTechCost_USA, "StubTranTechCost") %>%
       add_xml_data(L254.StubTranTechCoef_USA, "StubTranTechCoef") %>%
       add_xml_data(L254.PerCapitaBased_trn_USA, "PerCapitaBased") %>%
-      add_xml_data(L254.PriceElasticity_trn_fr_USA, "PriceElasticity") %>%
-      add_xml_data(L254.PriceElasticity_trn_pass_USA, "PriceElasticity_trn") %>%
+      add_xml_data(L254.PriceElasticity_trn_USA, "PriceElasticity") %>%
       add_xml_data(L254.IncomeElasticity_trn_USA, "IncomeElasticity") %>%
       add_xml_data(L254.StubTranTechCalInput_USA, "StubTranTechCalInput") %>%
       add_xml_data(L254.StubTranTechProd_nonmotor_USA, "StubTranTechProd") %>%
@@ -156,8 +153,7 @@ module_gcamusa_batch_transportation_USA_xml <- function(command, ...) {
                      "L254.StubTranTechCost_USA",
                      "L254.StubTranTechCoef_USA",
                      "L254.PerCapitaBased_trn_USA",
-                     "L254.PriceElasticity_trn_fr_USA",
-                     "L254.PriceElasticity_trn_pass_USA",
+                     "L254.PriceElasticity_trn_USA",
                      "L254.IncomeElasticity_trn_USA",
                      "L254.StubTranTechCalInput_USA",
                      "L254.StubTranTechProd_nonmotor_USA",
