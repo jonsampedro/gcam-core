@@ -939,8 +939,8 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
       # Add adjusted group (toCheck)
       mutate(supplysector = if_else(!(grepl("freight", supplysector)),gsub("_d", "-d", supplysector), supplysector),
              minicam.energy.input = if_else(!(grepl("freight", supplysector)),gsub("_d", "-d", minicam.energy.input), minicam.energy.input)) %>%
-      separate(supplysector, c("supplysector", "group"), sep = "-") %>%
-      separate(minicam.energy.input, c("minicam.energy.input", "x"), sep = "-") %>%
+      separate(supplysector, c("supplysector", "group"), sep = "-", fill = "right") %>%
+      separate(minicam.energy.input, c("minicam.energy.input", "x"), sep = "-", fill = "right") %>%
       select(-x)
 
     # split by supplysector
