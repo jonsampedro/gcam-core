@@ -157,6 +157,11 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
 
       colnames(UCD_techs)[colnames(UCD_techs)=='rev_size.class']<-'size.class'
       colnames(UCD_techs)[colnames(UCD_techs)=='rev.mode']<-'mode'
+
+      # Adjust UCD techs: Car and Large Car and Truck
+      UCD_techs <- UCD_techs %>%
+        filter(!(tranSubsector == "Large Car and Truck" & size.class == "Car"))
+
     }
     if (toString(energy.TRAN_UCD_MODE)=='rev.mode'){
       A54.tranSubsector_logit <- get_data(all_data, "energy/A54.tranSubsector_logit_revised",strip_attributes = TRUE)
@@ -830,12 +835,18 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
     # L154.loadfactor_R_trn_m_sz_tech_F_Y reports load factors by GCAM region / mode / size class / technology / fuel / year
     #kbn 2019-10-14 Switching to left_join_keep_first, since we have fewer mode categories now.
     #kbn 2020-06-02 Adding sce below (See description of changes using search string kbn 2020-06-02 Making changes to generate xmls for SSPs flexibly)
+
+    # JS 08-2023: Need to roll back to left_join (instead of left_join_keep_first) for multiple consumers
+    # The load factors for Large Car and Truck are slightly different from the core as now they are the average between the LF of the car and the truck
+    # Need to make an adjustment on the "Large car and truck" category
     L254.StubTranTechLoadFactor <- L154.loadfactor_R_trn_m_sz_tech_F_Y %>%
       filter(year %in% MODEL_YEARS) %>%
       mutate(loadFactor = round(value, energy.DIGITS_LOADFACTOR)) %>%
       left_join_error_no_match(GCAM_region_names, by = "GCAM_region_ID") %>%
       left_join(UCD_techs, by = c("UCD_sector", "mode", "size.class", "UCD_technology", "UCD_fuel")) %>%
       rename(stub.technology = tranTechnology) %>%
+      # Adjust: "Large car and truck"
+      #mutate(tranSubsector = if_else(size.class == "Car", "Car", tranSubsector)) %>%
       select(LEVEL2_DATA_NAMES[["StubTranTechLoadFactor"]],sce) %>%
       group_by(region, supplysector, tranSubsector, stub.technology, year, sce) %>%
       summarise(loadFactor = mean(loadFactor)) %>%
@@ -898,7 +909,7 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
 
 
     # The next step is to bind rows with all pass-through technologies on to this table
-    A54.globaltech_passthru %>%
+    L254.StubTechCalInput_passthru_all_rows <- A54.globaltech_passthru %>%
       repeat_add_columns(tibble(year = MODEL_BASE_YEARS)) %>%
       write_to_all_regions(c(LEVEL2_DATA_NAMES[["tranSubsector"]], "technology", "year", "minicam.energy.input"),
                            GCAM_region_names = GCAM_region_names) %>%
@@ -910,8 +921,8 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
       mutate(output = 0) %>%
       bind_rows(
         select(L254.StubTranTechOutput, one_of(c(LEVEL2_DATA_NAMES[["tranSubsector"]]),
-                                               "stub.technology", "year", "output", "minicam.energy.input","sce"))) ->
-      L254.StubTechCalInput_passthru_all_rows
+                                               "stub.technology", "year", "output", "minicam.energy.input","sce")))
+
 
     #kbn 2020-06-02 Adding sce below (See description of changes using search string kbn 2020-06-02 Making changes to generate xmls for SSPs flexibly)
     L254.StubTechCalInput_passthru_all_rows %>%
@@ -920,22 +931,74 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
       ungroup() ->
       L254.StubTechCalInput_passthru_agg
 
-    L254.StubTechCalInput_passthru_all_rows %>%
+
+    L254.StubTechCalInput_passthru_cum <- L254.StubTechCalInput_passthru_all_rows %>%
       left_join(L254.StubTechCalInput_passthru_agg, by = c("region", "year", "minicam.energy.input" = "supplysector","sce")) %>%
       # remove the technologies that are not pass-through sectors
       semi_join(L254.StubTech_passthru, by = c("region", "supplysector", "tranSubsector", "stub.technology","sce")) %>%
-      # compute cumulative sum for use below
-      arrange(desc(minicam.energy.input)) %>%
-      group_by(region, year) %>%
-      mutate(output_cum = cumsum(output_agg)) %>%
-      ungroup() ->
-      L254.StubTechCalInput_passthru_cum
+      # Add adjusted group (toCheck)
+      mutate(supplysector = if_else(!(grepl("freight", supplysector)),gsub("_d", "-d", supplysector), supplysector),
+             minicam.energy.input = if_else(!(grepl("freight", supplysector)),gsub("_d", "-d", minicam.energy.input), minicam.energy.input)) %>%
+      separate(supplysector, c("supplysector", "group"), sep = "-") %>%
+      separate(minicam.energy.input, c("minicam.energy.input", "x"), sep = "-") %>%
+      select(-x)
 
-    LIST_supplysector <- unique(L254.StubTechCalInput_passthru_cum$supplysector)
+    # split by supplysector
+    # freight
+    L254.StubTechCalInput_passthru_cum_fr <- L254.StubTechCalInput_passthru_cum %>%
+      filter(supplysector == "trn_freight") %>%
+      group_by(region, year, group) %>%
+      mutate(output_cum = sum(output_agg)) %>%
+      ungroup() %>%
+      select(-output_agg)
+
+    L254.StubTechCalInput_passthru_cum_pass <- L254.StubTechCalInput_passthru_cum %>%
+      filter(supplysector %in% c("trn_pass","trn_pass_road", "trn_pass_road_LDV")) %>%
+      mutate(supplysector = "trn_pass",
+             tranSubsector = "road",
+             stub.technology = "road",
+             minicam.energy.input = "trn_pass_road") %>%
+      group_by(region, year, group) %>%
+      mutate(output_cum = sum(output_agg)) %>%
+      ungroup() %>%
+      select(-output_agg) %>%
+      distinct()
+
+    L254.StubTechCalInput_passthru_cum_road <- L254.StubTechCalInput_passthru_cum %>%
+      filter(supplysector %in% c("trn_pass_road", "trn_pass_road_LDV")) %>%
+      mutate(supplysector = "trn_pass_road",
+             tranSubsector = "LDV",
+             stub.technology = "LDV",
+             minicam.energy.input = "trn_pass_road_LDV") %>%
+      group_by(region, year, group) %>%
+      mutate(output_cum = sum(output_agg)) %>%
+      ungroup() %>%
+      select(-output_agg) %>%
+      distinct()
+
+    L254.StubTechCalInput_passthru_cum_ldv <- L254.StubTechCalInput_passthru_cum %>%
+      filter(supplysector == "trn_pass_road_LDV") %>%
+      group_by(region, year, group) %>%
+      mutate(output_cum = sum(output_agg)) %>%
+      ungroup() %>%
+      select(-output_agg) %>%
+      distinct()
+
+
+      L254.StubTechCalInput_passthru_cum <- bind_rows(
+        L254.StubTechCalInput_passthru_cum_fr,
+        L254.StubTechCalInput_passthru_cum_pass,
+        L254.StubTechCalInput_passthru_cum_road,
+        L254.StubTechCalInput_passthru_cum_ldv,
+
+      ) %>%
+      mutate(supplysector = if_else(!(grepl("freight", supplysector)),paste0(supplysector, "_", group), supplysector),
+             minicam.energy.input = if_else(!(grepl("freight", supplysector)),paste0(minicam.energy.input, "_", group), minicam.energy.input)) %>%
+      select(-group)
+
 
     L254.StubTechCalInput_passthru_cum %>%
-      mutate(calibrated.value = if_else(minicam.energy.input %in% LIST_supplysector,
-                                        output_cum, output_agg),
+      mutate(calibrated.value =  output_cum,
              share.weight.year = year,
              subs.share.weight = if_else(calibrated.value > 0, 1, 0),
              tech.share.weight = subs.share.weight) %>%
