@@ -100,22 +100,31 @@ module_emissions_L201.en_nonco2 <- function(command, ...) {
       repeat_add_columns(tibble(group = unique(groups$category))) %>%
       unite(supplysector, c("supplysector","group"), sep = "_")
 
+    # Adjust transport sector for multiple consumer groups
+    EnTechInputNameMap_trn<-EnTechInputNameMap %>%
+      filter(grepl("trn_pass",supplysector) | grepl("trn_aviation_intl",supplysector)) %>%
+      repeat_add_columns(tibble(group = unique(groups$category))) %>%
+      unite(supplysector, c("supplysector","group"), sep = "_")
+
     EnTechInputNameMap<-EnTechInputNameMap %>%
-      filter(!grepl("resid",supplysector)) %>%
-      bind_rows(EnTechInputNameMap_resid)
+      filter(!grepl("resid",supplysector),
+             !grepl("trn_pass",supplysector),
+             !grepl("trn_aviation_intl",supplysector)) %>%
+      bind_rows(EnTechInputNameMap_resid) %>%
+      bind_rows(EnTechInputNameMap_trn)
 
 
 
     # L201.en_pol_emissions: Pollutant emissions for energy technologies in all regions
-    L111.nonghg_tg_R_en_S_F_Yh %>%
+    L201.en_pol_emissions <- L111.nonghg_tg_R_en_S_F_Yh %>%
       filter(supplysector != "out_resources",
              year %in% emissions.MODEL_BASE_YEARS) %>%
       # add region name and round output
       left_join_error_no_match(GCAM_region_names, by = "GCAM_region_ID") %>%
       left_join_error_no_match(EnTechInputNameMap,by = c("supplysector", "subsector", "stub.technology")) %>%
       select(region, supplysector, subsector, stub.technology, year, input.emissions = value, Non.CO2, input.name) %>%
-      mutate(input.emissions = signif(input.emissions, emissions.DIGITS_EMISSIONS)) ->
-      L201.en_pol_emissions
+      mutate(input.emissions = signif(input.emissions, emissions.DIGITS_EMISSIONS))
+
 
     # L201.en_ghg_emissions: GHG emissions for energy technologies in all regions
     L112.ghg_tg_R_en_S_F_Yh %>%

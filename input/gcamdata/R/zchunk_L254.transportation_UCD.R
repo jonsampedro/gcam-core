@@ -19,7 +19,7 @@
 #' \code{L254.StubTranTechCost}, \code{L254.StubTranTechCoef}, \code{L254.StubTechCalInput_passthru},
 #' \code{L254.StubTechProd_nonmotor}, \code{L254.PerCapitaBased_trn}, \code{L254.PriceElasticity_trn},
 #' \code{L254.IncomeElasticity_trn}, \code{L254.BaseService_trn_fr}, \code{L254.BaseService_trn_pass}. \code{L254.demandFn_trn},
-#'  \code{L244.SubregionalShares_trn} ,\code{L254.demandFn_trn_coef}
+#'  \code{L244.SubregionalShares_trn} ,\code{L254.demandFn_trn_coef}, \code{L244.TrnShares}, \code{L244.SubregionalShares_trn}
 #'  The corresponding file in the
 #' original data system was \code{L254.transportation_UCD.R} (energy level2).
 #' @details Due to the asymmetrical nature of the transportation sectors in the various regions, we can't simply write
@@ -109,6 +109,7 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
              "L254.BaseService_trn_fr",
              "L254.BaseService_trn_pass",
              "L254.demandFn_trn",
+             "L244.TrnShares",
              "L244.SubregionalShares_trn",
              "L254.demandFn_trn_coef"))
   } else if(command == driver.MAKE) {
@@ -395,6 +396,9 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
     #L154.trn_serv_shares <- bind_rows(L154.trn_serv_shares_pass, L154.trn_serv_shares_fr)
 
     L154.trn_serv_shares <- L154.trn_serv_shares_pass
+
+    # Write ouput with shares for alocating transortation:
+    L244.TrnShares <- L154.trn_serv_shares # output
 
     # ===================================================
 
@@ -1508,6 +1512,15 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
       L254.BaseService_trn_pass
 
 
+    L244.TrnShares %>%
+      add_title("Subregional shares for trn gcam.consumers") %>%
+      add_units("share") %>%
+      add_comments("comments describing how data generated") %>%
+      add_legacy_name("L244.TrnShares") %>%
+      add_precursors("common/GCAM_region_names", "L244.SubregionalShares") ->
+      L244.TrnShares
+
+
     L244.SubregionalShares_trn %>%
       add_title("Subregional income shares for trn gcam.consumers") %>%
       add_units("share") %>%
@@ -1535,7 +1548,7 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
                 L254.StubTranTechCost, L254.StubTranTechCoef, L254.StubTechCalInput_passthru,
                 L254.StubTechProd_nonmotor, L254.PerCapitaBased_trn, L254.PriceElasticity_trn,
                 L254.IncomeElasticity_trn, L254.BaseService_trn_fr, L254.BaseService_trn_pass, L254.demandFn_trn,
-                L244.SubregionalShares_trn, L254.demandFn_trn_coef)
+                L244.TrnShares, L244.SubregionalShares_trn, L254.demandFn_trn_coef)
   } else {
     stop("Unknown command")
   }
