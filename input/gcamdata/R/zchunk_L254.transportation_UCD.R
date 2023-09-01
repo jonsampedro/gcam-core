@@ -940,11 +940,10 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
       left_join(L254.StubTechCalInput_passthru_agg, by = c("region", "year", "minicam.energy.input" = "supplysector","sce")) %>%
       # remove the technologies that are not pass-through sectors
       semi_join(L254.StubTech_passthru, by = c("region", "supplysector", "tranSubsector", "stub.technology","sce")) %>%
-      # Add adjusted group (toCheck)
-      mutate(supplysector = if_else(!(grepl("freight", supplysector)),gsub("_d", "-d", supplysector), supplysector),
-             minicam.energy.input = if_else(!(grepl("freight", supplysector)),gsub("_d", "-d", minicam.energy.input), minicam.energy.input)) %>%
-      separate(supplysector, c("supplysector", "group"), sep = "-", fill = "right") %>%
-      separate(minicam.energy.input, c("minicam.energy.input", "x"), sep = "-", fill = "right") %>%
+      mutate(supplysector = if_else(!(grepl("freight", supplysector)), sub("_([^_]*)$", "_split_\\1", supplysector), supplysector),
+             minicam.energy.input = if_else(!(grepl("freight", minicam.energy.input)), sub("_([^_]*)$", "_split_\\1", minicam.energy.input), minicam.energy.input)) %>%
+      tidyr::separate(supplysector, into = c("supplysector", "group"), sep = "_split_", extra = "merge", fill = "right") %>%
+      tidyr::separate(minicam.energy.input, into = c("minicam.energy.input", "x"), sep = "_split_", extra = "merge", fill = "right") %>%
       select(-x)
 
     # split by supplysector
@@ -1102,8 +1101,8 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
 
     # We need to prepare the dataframe for the estimation of the a parameter
      trn_data <- L254.BaseService_trn_pass %>%
-      mutate(gcam.consumer = gsub("_d", "-d", gcam.consumer)) %>%
-      separate(gcam.consumer, c("gcam.consumer", "group"), sep = "-") %>%
+      mutate(gcam.consumer = sub("_([^_]*)$", "_split_\\1", gcam.consumer)) %>%
+      tidyr::separate(gcam.consumer, into = c("gcam.consumer", "group"), sep = "_split_", extra = "merge", fill = "right") %>%
       left_join_error_no_match(GCAM_region_names, by = "region") %>%
       left_join_error_no_match(L102.pcgdp_thous90USD_Scen_R_Y_gr %>% filter(scenario == socioeconomics.BASE_GDP_SCENARIO),
                                by = c("GCAM_region_ID", "region", "year", "group")) %>%
@@ -1121,8 +1120,8 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
       left_join_error_no_match(L254.PriceElasticity_trn_pass %>%
                                  select(-year) %>%
                                  distinct() %>%
-                                 mutate(gcam.consumer = gsub("_d", "-d", gcam.consumer)) %>%
-                                 separate(gcam.consumer, c("gcam.consumer", "group"), sep = "-"),
+                                 mutate(gcam.consumer = sub("_([^_]*)$", "_split_\\1", gcam.consumer)) %>%
+                                 tidyr::separate(gcam.consumer, into = c("gcam.consumer", "group"), sep = "_split_", extra = "merge", fill = "right"),
                                by = c("region", "gcam.consumer", "group", "sce")) %>%
       # add pop
       left_join_error_no_match(L101.Pop_thous_R_Yh, by = c("year", "GCAM_region_ID")) %>%

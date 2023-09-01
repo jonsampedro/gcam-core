@@ -701,8 +701,8 @@ module_emissions_L112.ceds_ghg_en_R_S_T_Y <- function(command, ...) {
       select(supplysector,subsector,stub.technology) %>%
       distinct() %>%
       #ToCheck
-      mutate(supplysector = gsub("_d", "-d", supplysector)) %>%
-      separate(supplysector, c("supplysector", "group"), sep = "-") %>%
+      mutate(supplysector = sub("_([^_]*)$", "_split_\\1", supplysector)) %>%
+      tidyr::separate(supplysector, into = c("supplysector", "group"), sep = "_split_", extra = "merge", fill = "right") %>%
       left_join(CEDS_sector_tech, by = c("supplysector", "subsector", "stub.technology")) %>%
       filter(complete.cases(.)) %>%
       unite(supplysector, c("supplysector", "group"), sep = "_")
