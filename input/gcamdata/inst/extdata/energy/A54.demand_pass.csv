@@ -1,8 +1,0 @@
-# File: A54.demand_pass.csv
-# Title: Transportation final demand perCapitaBased / price elasticity / income elasticity
-# Units: Unitless
-# Column types: cinn 
-# ----------
-gcam.consumer,perCapitaBased,price.elasticity,income.elasticity
-trn_pass,1,-1.25,1
-trn_aviation_intl,1,-1,1

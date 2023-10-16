@@ -633,7 +633,7 @@ module_emissions_L112.ceds_ghg_en_R_S_T_Y <- function(command, ...) {
     # We neeed to allocate transport to the different consumer groups using the computed shares:
     L244.TrnShares <- get_data(all_data, "L244.TrnShares", strip_attributes = TRUE) %>%
       filter(scenario == "CORE") %>%
-      select(region, supplysector = gcam.consumer, year, group, share = serv.share) %>%
+      select(region, supplysector = energy.final.demand, year, group, share = serv.share) %>%
       unite(supplysector, c("supplysector","group"), sep = "_") %>%
       select(-year) %>%
       repeat_add_columns(tibble(year = unique(L112.in_EJ_R_en_S_F_Yh_calib_all$year)))

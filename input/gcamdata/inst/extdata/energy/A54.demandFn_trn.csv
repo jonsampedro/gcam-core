@@ -1,8 +1,0 @@
-# File: A54.demandFn_trn.csv
-# Title: Transport demand function type
-# Units: NA
-# Column types: cc
-# ----------
-gcam.consumer,prodDmdFnType
-trn_pass,trn-function
-trn_aviation_intl,trn-function

@@ -449,27 +449,17 @@ StubTranTechProd, world/+{name}region, region/+{name}supplysector, supplysector/
 
 PerCapitaBased, world/+{name}region, region/+{name}energy-final-demand, energy-final-demand/+perCapitaBased, energy-final-demand/final-energy-consumer, scenario, scenario/world
 
-PerCapitaBased_trn, world/+{name}region, region/+{name}gcam-consumer, gcam-consumer/+perCapitaBased, scenario, scenario/world
-
 BaseService, world/+{name}region, region/+{name}energy-final-demand, energy-final-demand/+{year}base-service, energy-final-demand/+base-service, scenario, scenario/world
-
-BaseService_trn, world/+{name}region, region/+{name}gcam-consumer, gcam-consumer/+{year}base-service, gcam-consumer/+base-service, scenario, scenario/world
 
 IncomeElasticity, world/+{name}region, region/+{name}energy-final-demand, energy-final-demand/+{year}income-elasticity, energy-final-demand/+income-elasticity, scenario, scenario/world
 
-IncomeElasticity_trn, world/+{name}region, region/+{name}gcam-consumer, gcam-consumer/+{year}income-elasticity, gcam-consumer/+income-elasticity, scenario, scenario/world
-
 PriceElasticity, world/+{name}region, region/+{name}energy-final-demand, energy-final-demand/+{year}price-elasticity, energy-final-demand/+price-elasticity, scenario, scenario/world
-
-PriceElasticity_trn, world/+{name}region, region/+{name}gcam-consumer, gcam-consumer/+{year}price-elasticity, gcam-consumer/+price-elasticity, scenario, scenario/world
 
 aeei, world/+{name}region, region/+{name}energy-final-demand, final-energy-consumer/+{year}aeei, final-energy-consumer/+aeei, scenario, scenario/world, energy-final-demand/final-energy-consumer
 
 DeleteFinalDemand, world/+{name}region, region/+{name; delete=1}energy-final-demand, scenario, scenario/world
 
-DeleteFinalDemand_trn, world/+{name}region, region/+{name; delete=1}gcam-consumer, scenario, scenario/world
-
-DemandFunction_trn_coef, world/+{name}region, region/+{name}gcam-consumer, gcam-consumer/+coef_trn, scenario, scenario/world
+DemandFunction_trn_coef, world/+{name}region, region/+{name}energy-final-demand, energy-final-demand/+coef_trn, scenario, scenario/world
 
 #####, BUILDING FINAL DEMAND
 
@@ -479,6 +469,8 @@ DeleteFinalDemand, world/+{name}region,region/+{name; delete=1}energy-final-dema
 
 SubregionalShares, world/+{name}region, region/+{name}gcam-consumer, gcam-consumer/+{year;fillout=1}subregional-population-share, gcam-consumer/+{year;fillout=1}subregional-income-share, gcam-consumer/+subregional-population-share, gcam-consumer/+subregional-income-share, scenario, scenario/world
 
+SubregionalShares_trn, world/+{name}region, region/+{name}energy-final-demand, energy-final-demand/+{year;fillout=1}subregional-population-share, energy-final-demand/+{year;fillout=1}subregional-income-share, energy-final-demand/+subregional-population-share, energy-final-demand/+subregional-income-share, scenario, scenario/world
+
 PriceExp_IntGains, world/+{name}region, region/+{name}gcam-consumer, gcam-consumer/+{name}nodeInput, nodeInput/+{name}building-node-input, building-node-input/+{year;fillout=1}price-exponent, building-node-input/+price-exponent, building-node-input/+internal-gains-market-name, building-node-input/+internal-gains-unit, scenario, scenario/world
 
 DemandFunction_food, world/+{name}region, region/+{name}gcam-consumer, gcam-consumer/+{name}nodeInput, nodeInput/+prodDmdFnType, scenario, scenario/world
@@ -486,8 +478,6 @@ DemandFunction_food, world/+{name}region, region/+{name}gcam-consumer, gcam-cons
 DemandFunction_flsp, world/+{name}region, region/+{name}gcam-consumer, gcam-consumer/+{name}nodeInput, nodeInput/+prodDmdFnType, scenario, scenario/world
 
 DemandFunction_serv, world/+{name}region, region/+{name}gcam-consumer, gcam-consumer/+{name}nodeInput, nodeInput/+{name}building-node-input, building-node-input/+prodDmdFnType, scenario, scenario/world
-
-DemandFunction_trn, world/+{name}region, region/+{name}gcam-consumer, gcam-consumer/+prodDmdFnType, scenario, scenario/world
 
 Floorspace, world/+{name}region, region/+{name}gcam-consumer, gcam-consumer/+{name}nodeInput, nodeInput/+{name}building-node-input, building-node-input/+{year}base-building-size, building-node-input/+base-building-size, scenario, scenario/world
 

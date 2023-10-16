@@ -14,7 +14,6 @@ module_gcamusa_batch_transportation_USA_xml <- function(command, ...) {
   if(command == driver.DECLARE_INPUTS) {
     return(c("L254.DeleteSupplysector_USAtrn",
              "L254.DeleteFinalDemand_USAtrn",
-             "L254.Delete_Cons_USAtrn",
              "L254.Supplysector_trn_USA",
              "L254.FinalEnergyKeyword_trn_USA",
              "L254.tranSubsectorLogit_USA",
@@ -32,15 +31,13 @@ module_gcamusa_batch_transportation_USA_xml <- function(command, ...) {
              "L254.StubTranTechLoadFactor_USA",
              "L254.StubTranTechCost_USA",
              "L254.StubTranTechCoef_USA",
-             "L254.PerCapitaBased_trn_USA",
-             "L254.PriceElasticity_trn_USA",
-             "L254.IncomeElasticity_trn_USA",
+             "L254.PerCapitaBased_USA",
+             "L254.PriceElasticity_USA",
+             "L254.IncomeElasticity_USA",
              "L254.StubTranTechCalInput_USA",
              "L254.StubTranTechProd_nonmotor_USA",
              "L254.StubTranTechCalInput_passthru_USA",
-             "L254.BaseService_trn_USA_fr",
-             "L254.BaseService_trn_USA_pass",
-             "L254.demandFn_trn_USA"))
+             "L254.BaseService_USA"))
   } else if(command == driver.DECLARE_OUTPUTS) {
     #xml_files<- c("transportation_USA_CORE.xml","transportation_USA_highEV.xml")
     xml_files<- c("transportation_USA_CORE.xml")
@@ -62,7 +59,6 @@ module_gcamusa_batch_transportation_USA_xml <- function(command, ...) {
     # Load required inputs
     L254.DeleteSupplysector_USAtrn <- get_data(all_data, "L254.DeleteSupplysector_USAtrn") %>% mutate(sce=paste0("CORE")) %>% filter(sce==i)
     L254.DeleteFinalDemand_USAtrn <- get_data(all_data, "L254.DeleteFinalDemand_USAtrn") %>% filter(sce==i)
-    L254.Delete_Cons_USAtrn <- get_data(all_data, "L254.Delete_Cons_USAtrn") %>% filter(sce==i)
 
     L254.Supplysector_trn_USA <- get_data(all_data, "L254.Supplysector_trn_USA") %>% filter(sce==i)
 
@@ -81,15 +77,13 @@ module_gcamusa_batch_transportation_USA_xml <- function(command, ...) {
     L254.StubTranTechLoadFactor_USA <- get_data(all_data, "L254.StubTranTechLoadFactor_USA")%>% filter(sce==i)
     L254.StubTranTechCost_USA <- get_data(all_data, "L254.StubTranTechCost_USA")%>% filter(sce==i)
     L254.StubTranTechCoef_USA <- get_data(all_data, "L254.StubTranTechCoef_USA")%>% filter(sce==i)
-    L254.PerCapitaBased_trn_USA <- get_data(all_data, "L254.PerCapitaBased_trn_USA") %>% filter(sce==i)
-    L254.PriceElasticity_trn_USA <- get_data(all_data, "L254.PriceElasticity_trn_USA") %>% filter(sce==i)
-    L254.IncomeElasticity_trn_USA <- get_data(all_data, "L254.IncomeElasticity_trn_USA")%>% filter(sce==i)
+    L254.PerCapitaBased_USA <- get_data(all_data, "L254.PerCapitaBased_USA") %>% filter(sce==i)
+    L254.PriceElasticity_USA <- get_data(all_data, "L254.PriceElasticity_USA") %>% filter(sce==i)
+    L254.IncomeElasticity_USA <- get_data(all_data, "L254.IncomeElasticity_USA")%>% filter(sce==i)
     L254.StubTranTechCalInput_USA <- get_data(all_data, "L254.StubTranTechCalInput_USA") %>% filter(sce==i)
     L254.StubTranTechProd_nonmotor_USA <- get_data(all_data, "L254.StubTranTechProd_nonmotor_USA")
     L254.StubTranTechCalInput_passthru_USA <- get_data(all_data, "L254.StubTranTechCalInput_passthru_USA")%>% mutate(sce=paste0("CORE")) %>% filter(sce==i)
-    L254.BaseService_trn_USA_fr <- get_data(all_data, "L254.BaseService_trn_USA_fr") %>% mutate(sce=paste0("CORE")) %>% filter(sce==i)
-    L254.BaseService_trn_USA_pass <- get_data(all_data, "L254.BaseService_trn_USA_pass") %>% mutate(sce=paste0("CORE")) %>% filter(sce==i)
-    L254.demandFn_trn_USA <- get_data(all_data, "L254.demandFn_trn_USA") %>% mutate(sce=paste0("CORE")) %>% filter(sce==i)
+    L254.BaseService_USA <- get_data(all_data, "L254.BaseService_USA") %>% mutate(sce=paste0("CORE")) %>% filter(sce==i)
 
     if (i != "CORE"){
       L254.tranSubsectorSpeed_USA <- L254.tranSubsectorSpeed_USA %>% filter(year>MODEL_FINAL_BASE_YEAR)
@@ -105,7 +99,6 @@ module_gcamusa_batch_transportation_USA_xml <- function(command, ...) {
     create_xml(xml_name) %>%
       add_xml_data(L254.DeleteSupplysector_USAtrn, "DeleteSupplysector") %>%
       add_xml_data(L254.DeleteFinalDemand_USAtrn, "DeleteFinalDemand") %>%
-      add_xml_data(L254.Delete_Cons_USAtrn, "DeleteFinalDemand_trn") %>%
       add_logit_tables_xml(L254.Supplysector_trn_USA, "Supplysector") %>%
       add_xml_data(L254.FinalEnergyKeyword_trn_USA, "FinalEnergyKeyword") %>%
       add_logit_tables_xml(L254.tranSubsectorLogit_USA, "tranSubsectorLogit", "tranSubsector") %>%
@@ -123,18 +116,15 @@ module_gcamusa_batch_transportation_USA_xml <- function(command, ...) {
       add_xml_data(L254.StubTranTechLoadFactor_USA, "StubTranTechLoadFactor") %>%
       add_xml_data(L254.StubTranTechCost_USA, "StubTranTechCost") %>%
       add_xml_data(L254.StubTranTechCoef_USA, "StubTranTechCoef") %>%
-      add_xml_data(L254.PerCapitaBased_trn_USA, "PerCapitaBased") %>%
-      add_xml_data(L254.PriceElasticity_trn_USA, "PriceElasticity") %>%
-      add_xml_data(L254.IncomeElasticity_trn_USA, "IncomeElasticity") %>%
+      add_xml_data(L254.PerCapitaBased_USA, "PerCapitaBased") %>%
+      add_xml_data(L254.PriceElasticity_USA, "PriceElasticity") %>%
+      add_xml_data(L254.IncomeElasticity_USA, "IncomeElasticity") %>%
       add_xml_data(L254.StubTranTechCalInput_USA, "StubTranTechCalInput") %>%
       add_xml_data(L254.StubTranTechProd_nonmotor_USA, "StubTranTechProd") %>%
       add_xml_data(L254.StubTranTechCalInput_passthru_USA, "StubTranTechCalInput") %>%
-      add_xml_data(L254.BaseService_trn_USA_fr, "BaseService") %>%
-      add_xml_data(L254.BaseService_trn_USA_pass, "BaseService_trn") %>%
-      add_xml_data(L254.demandFn_trn_USA, "DemandFunction_trn") %>%
+      add_xml_data(L254.BaseService_USA, "BaseService") %>%
       add_precursors("L254.DeleteSupplysector_USAtrn",
                      "L254.DeleteFinalDemand_USAtrn",
-                     "L254.Delete_Cons_USAtrn",
                      "L254.Supplysector_trn_USA",
                      "L254.FinalEnergyKeyword_trn_USA",
                      "L254.tranSubsectorLogit_USA",
@@ -152,15 +142,13 @@ module_gcamusa_batch_transportation_USA_xml <- function(command, ...) {
                      "L254.StubTranTechLoadFactor_USA",
                      "L254.StubTranTechCost_USA",
                      "L254.StubTranTechCoef_USA",
-                     "L254.PerCapitaBased_trn_USA",
-                     "L254.PriceElasticity_trn_USA",
-                     "L254.IncomeElasticity_trn_USA",
+                     "L254.PerCapitaBased_USA",
+                     "L254.PriceElasticity_USA",
+                     "L254.IncomeElasticity_USA",
                      "L254.StubTranTechCalInput_USA",
                      "L254.StubTranTechProd_nonmotor_USA",
                      "L254.StubTranTechCalInput_passthru_USA",
-                     "L254.BaseService_trn_USA_fr",
-                     "L254.BaseService_trn_USA_pass",
-                     "L254.demandFn_trn_USA") %>%
+                     "L254.BaseService_USA") %>%
                       assign(xml_name, ., envir = curr_env)
     ret_data <- c(ret_data, xml_name)
 
