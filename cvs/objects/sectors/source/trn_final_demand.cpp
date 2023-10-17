@@ -62,7 +62,7 @@ extern Scenario* scenario;
 /*! \brief Constructor.
 * \author Sonny Kim, Steve Smith, Josh Lurz
 */
-TrnFinalDemand::TrnFinalDemand():
+TrnFinalDemand::TrnFinalDemand()
 {
 }
 
@@ -117,14 +117,7 @@ void TrnFinalDemand::toDebugXMLDerived( const int period, std::ostream& out, Tab
 void TrnFinalDemand::completeInit( const string& aRegionName,
                                       const IInfo* aRegionInfo )
 {
-    if( mBaseService[ 0 ] < 0.0 ){
-        ILogger& mainLog = ILogger::getLogger( "main_log" );
-        mainLog.setLevel( ILogger::DEBUG );
-        mainLog << "Zero base service for demand sector " << mName
-                << " in region " << aRegionName << "." << endl;
-        mBaseService[ 0 ] = 1;
-        mPreTechChangeServiceDemand[ 0 ] = 1;
-    }
+}
     // Make sure that we have income and price elasticities for each model period.
     // If not we should interpolate between model periods that we do have.
     
@@ -134,6 +127,15 @@ void TrnFinalDemand::initCalc( const string& aRegionName,
                                   const Demographic* aDemographics,
                                   const int aPeriod )
 {
+}
+
+
+double TrnFinalDemand::getPrice(const string& aRegionName, const int aPeriod) const {
+    return scenario->getMarketplace()->getPrice(mName, aRegionName, aPeriod);
+}
+
+double TrnFinalDemand::getPricePaid(const string& aRegionName, const int aPeriod) const {
+    return getPrice(aRegionName, aPeriod);
 }
 
 /*! \brief Set the final demand for service into the marketplace after 
@@ -180,17 +182,9 @@ void TrnFinalDemand::setFinalDemand( const string& aRegionName,
 
     // Set the service demand into the marketplace.
     Marketplace* marketplace = scenario->getMarketplace();
-    marketplace->addToDemand( mName, aRegionName, mServiceDemand[ aPeriod ], aPeriod );
+    marketplace->addToDemand( mName, aRegionName, mServiceDemands[ aPeriod ], aPeriod );
 }
 
-
-double TrnFinalDemand::getWeightedEnergyPrice(const string& aRegionName,
-    const int aPeriod) const
-{
-    // TODO: this method is no longer used and should be dropped
-    // when the macro module is introduced
-    return 0.0;
-}
 
 void TrnFinalDemand::accept(IVisitor* aVisitor,
     const int aPeriod) const

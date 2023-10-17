@@ -634,6 +634,7 @@
     <ClCompile Include="..\..\sectors\source\subsector_add_techcosts.cpp" />
     <ClCompile Include="..\..\sectors\source\supply_sector.cpp" />
     <ClCompile Include="..\..\sectors\source\tran_subsector.cpp" />
+    <ClCompile Include="..\..\sectors\source\trn_final_demand.cpp" />
     <ClCompile Include="..\..\solution\solvers\source\bisect_all.cpp" />
     <ClCompile Include="..\..\solution\solvers\source\bisect_one.cpp" />
     <ClCompile Include="..\..\solution\solvers\source\bisect_policy.cpp" />
@@ -908,6 +909,7 @@
     <ClInclude Include="..\..\sectors\include\subsector_add_techcosts.h" />
     <ClInclude Include="..\..\sectors\include\supply_sector.h" />
     <ClInclude Include="..\..\sectors\include\tran_subsector.h" />
+    <ClInclude Include="..\..\sectors\include\trn_final_demand.h" />
     <ClInclude Include="..\..\solution\solvers\include\bisect_all.h" />
     <ClInclude Include="..\..\solution\solvers\include\bisect_one.h" />
     <ClInclude Include="..\..\solution\solvers\include\bisect_policy.h" />
@@ -1104,6 +1106,9 @@
     <ProjectReference Include="..\..\climate\source\hector\project_files\VS\hector-lib.vcxproj">
       <Project>{88489c16-7642-48bb-b36c-c4b9507a1de2}</Project>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="cpp.hint" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

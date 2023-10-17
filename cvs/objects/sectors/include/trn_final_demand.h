@@ -38,9 +38,9 @@
 #endif
 
 /*! 
- * \file energy_final_demand.h
+ * \file trn_final_demand.h
  * \ingroup Objects
- * \brief The EnergyFinalDemand class header file.
+ * \brief The TrnFinalDemand class header file.
  * \author Josh Lurz
  */
 
@@ -61,69 +61,80 @@ class Demographic;
  *          towards the total final energy of the region.
  */
 
-class TrnFinalDemand: public EnergyFinalDemand
+class TrnFinalDemand : public EnergyFinalDemand
 {
     friend class XMLDBOutputter;
     friend class EnergyBalanceTable; // TODO: currently only to get mServiceDemands
 
 public:
     static const std::string& getXMLNameStatic();
-    
+
     virtual const std::string& getXMLName() const;
 
     TrnFinalDemand();
 
     virtual ~TrnFinalDemand();
 
-    virtual void toDebugXML( const int aPeriod,
-                             std::ostream& aOut,
-                             Tabs* aTabs ) const;
-    
+    virtual void toDebugXML(const int aPeriod,
+        std::ostream& aOut,
+        Tabs* aTabs) const;
+
     virtual const std::string& getName() const;
-    
-    virtual void completeInit( const std::string& aRegionName,
-                               const IInfo* aRegionInfo );
 
-    virtual void initCalc( const std::string& aRegionName,
-                           const GDP* aGDP,
-                           const Demographic* aDemographics,
-                           const int aPeriod );
+    virtual void completeInit(const std::string& aRegionName,
+        const IInfo* aRegionInfo);
 
-    virtual void setFinalDemand( const std::string& aRegionName,
-                                 const Demographic* aDemographics,
-                                 const GDP* aGDP,
-                                 const int aPeriod );
+    virtual void initCalc(const std::string& aRegionName,
+        const GDP* aGDP,
+        const Demographic* aDemographics,
+        const int aPeriod);
+
+    virtual void setFinalDemand(const std::string& aRegionName,
+        const Demographic* aDemographics,
+        const GDP* aGDP,
+        const int aPeriod);
 
 
-    virtual void accept( IVisitor* aVisitor, const int aPeriod ) const;
-   
+    virtual void accept(IVisitor* aVisitor, const int aPeriod) const;
 
- protected:
-        
-  
+    virtual double getPrice(const std::string& aRegionName,
+        const int aPeriod) const;
+
+    virtual double getPricePaid(const std::string& aRegionName,
+        const int aPeriod) const;
+
+    // Methods for deriving from EnergyFinalDemand.
+    virtual void toDebugXMLDerived(const int period, std::ostream& out, Tabs* tabs) const;
+
+
+protected:
+
+
     // Define data such that introspection utilities can process the data from this
     // subclass together with the data members of the parent classes.
     DEFINE_DATA_WITH_PARENT(
         EnergyFinalDemand,
-    
+
         //! Name of the final demand and the good it consumes.
-        DEFINE_VARIABLE( SIMPLE, "name", mName, std::string ),
+        DEFINE_VARIABLE(SIMPLE, "name", mName, std::string),
 
         //! Coefficient to estimate pass_km demand                      
-        DEFINE_VARIABLE( SIMPLE, "coef_trn", mTrnCoef),
-        
+        DEFINE_VARIABLE(SIMPLE, "coef_trn", mTrnCoef),
+
         //! Income share 
-        DEFINE_VARIABLE( ARRAY, "subregional-income-share", mSubregIncomeShare, objects::PeriodVector<Value> ),
+        DEFINE_VARIABLE(ARRAY, "subregional-income-share", mSubregIncomeShare, objects::PeriodVector<Value>),
 
         //! Population share
-        DEFINE_VARIABLE( ARRAY, "subregional-population-share", mSubregPopShare, objects::PeriodVector<Value> ),
+        DEFINE_VARIABLE(ARRAY, "subregional-population-share", mSubregPopShare, objects::PeriodVector<Value>),
 
         //! Per capita service for each period to which to calibrate.
-        DEFINE_VARIABLE( ARRAY, "base-service", mBaseService, objects::PeriodVector<Value> )
-                            
- )
+        DEFINE_VARIABLE(ARRAY, "base-service", mBaseService, objects::PeriodVector<Value>)
 
- };
+    )
+
+};
+
+
 
 #endif // _TRN_FINAL_DEMAND_H_
 
