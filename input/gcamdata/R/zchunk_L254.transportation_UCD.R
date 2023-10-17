@@ -19,7 +19,7 @@
 #' \code{L254.StubTranTechCost}, \code{L254.StubTranTechCoef}, \code{L254.StubTechCalInput_passthru},
 #' \code{L254.StubTechProd_nonmotor}, \code{L254.PerCapitaBased}, \code{L254.PriceElasticity},
 #' \code{L254.IncomeElasticity},  \code{L254.BaseService},
-#' \code{L244.SubregionalShares_trn} ,\code{L254.demandFn_trn_coef}, \code{L244.TrnShares}.
+#' \code{L244.SubregionalShares_trn} ,\code{L254.demandFn_trn_coef}, \code{L244.TrnShares}, \code{L254.CalPrice_trn}.
 #'  The corresponding file in the
 #' original data system was \code{L254.transportation_UCD.R} (energy level2).
 #' @details Due to the asymmetrical nature of the transportation sectors in the various regions, we can't simply write
@@ -105,7 +105,8 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
              "L254.BaseService",
              "L244.TrnShares",
              "L244.SubregionalShares_trn",
-             "L254.demandFn_trn_coef"))
+             "L254.demandFn_trn_coef",
+             "L254.CalPrice_trn"))
   } else if(command == driver.MAKE) {
 
     all_data <- list(...)[[1]]
@@ -257,6 +258,24 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
       rename(pcGDP_thous90USD = gdp_pc) %>%
       select(scenario, GCAM_region_ID, region, year, group, pcGDP_thous90USD)
 
+
+    # Create long price series
+    L154.CalPrice_trn <- A54.CalPrice_trn %>%
+      gather_years() %>%
+      rename(energy.final.demand = sector)
+
+    # Extend prices to all consumers:
+    L254.CalPrice_trn <- L154.CalPrice_trn %>%
+      filter(grepl("pass", energy.final.demand) | grepl("aviation", energy.final.demand)) %>%
+      repeat_add_columns(tibble(group = income_groups)) %>%
+      mutate(energy.final.demand = paste0(energy.final.demand, "_", group)) %>%
+      select(-group) %>%
+      rename(basePrice = value) %>%
+      # filter final calibration year
+      filter(year == MODEL_FINAL_BASE_YEAR) %>%
+      select(LEVEL2_DATA_NAMES[["CalPrice_trn"]])
+
+
     # ===================================================
     # PART 0: Incorporate multiple consumers to files
 
@@ -360,9 +379,7 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
                                              mutate(scenario = "CORE")) %>%
                                  mutate(sce = scenario)
                                , by = c("sce", "group", "year", "region", "GCAM_region_ID")) %>%
-      left_join_error_no_match(A54.CalPrice_trn %>%
-                                 gather_years() %>%
-                                 rename(energy.final.demand = sector)
+      left_join_error_no_match(L154.CalPrice_trn
                                , by = c("energy.final.demand", "year", "region")) %>%
       rename(price = value) %>%
       mutate(income_effect = pcGDP_thous90USD ^ income.elasticity,
@@ -1476,6 +1493,14 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
       add_precursors("common/GCAM_region_names", "L102.pcgdp_thous90USD_Scen_R_Y") ->
       L254.demandFn_trn_coef
 
+    L254.CalPrice_trn %>%
+      add_title("Final trn prices for the trn-function calibration") %>%
+      add_units("$1975") %>%
+      add_comments("estimated") %>%
+      add_legacy_name("L254.CalPrice_trn") %>%
+      add_precursors("common/GCAM_region_names", "energy/A54.CalPrice_trn") ->
+      L254.CalPrice_trn
+
     return_data(L254.Supplysector_trn, L254.FinalEnergyKeyword_trn, L254.tranSubsectorLogit,
                 L254.tranSubsectorShrwt, L254.tranSubsectorShrwtFllt, L254.tranSubsectorInterp,
                 L254.tranSubsectorInterpTo, L254.tranSubsectorSpeed, L254.tranSubsectorSpeed_passthru,
@@ -1487,7 +1512,7 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
                 L254.StubTranTechCost, L254.StubTranTechCoef, L254.StubTechCalInput_passthru,
                 L254.StubTechProd_nonmotor, L254.PerCapitaBased, L254.PriceElasticity,
                 L254.IncomeElasticity, L254.BaseService,
-                L244.TrnShares, L244.SubregionalShares_trn, L254.demandFn_trn_coef)
+                L244.TrnShares, L244.SubregionalShares_trn, L254.demandFn_trn_coef, L254.CalPrice_trn)
   } else {
     stop("Unknown command")
   }

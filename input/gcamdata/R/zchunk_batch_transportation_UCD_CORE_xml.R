@@ -49,6 +49,7 @@ module_energy_batch_transportation_UCD_CORE_xml <- function(command, ...) {
              "L254.PriceElasticity",
              "L254.IncomeElasticity",
              "L254.demandFn_trn_coef",
+             "L254.CalPrice_trn",
              "L254.BaseService"))
   } else if(command == driver.DECLARE_OUTPUTS) {
     #xml_files<- c("transportation_UCD_CORE.xml","transportation_UCD_SSP1.xml","transportation_UCD_SSP3.xml","transportation_UCD_SSP5.xml","transportation_UCD_highEV.xml")
@@ -103,6 +104,7 @@ module_energy_batch_transportation_UCD_CORE_xml <- function(command, ...) {
 
     L244.SubregionalShares_trn <- get_data(all_data, "L244.SubregionalShares_trn")
     L254.demandFn_trn_coef <- get_data(all_data, "L254.demandFn_trn_coef")
+    L254.CalPrice_trn <- get_data(all_data, "L254.CalPrice_trn")
 
 
     # ===================================================
@@ -212,6 +214,7 @@ module_energy_batch_transportation_UCD_CORE_xml <- function(command, ...) {
         add_xml_data(L254.IncomeElasticity_SSP, "IncomeElasticity") %>%
         add_xml_data(L254.BaseService_SSP, "BaseService") %>%
         add_xml_data(L254.demandFn_trn_coef, "DemandFunction_trn_coef") %>%
+        add_xml_data(L254.CalPrice_trn, "CalPrice_trn") %>%
         add_precursors("L254.Supplysector_trn",
                        "L254.FinalEnergyKeyword_trn",
                        "L254.tranSubsectorLogit",
@@ -245,6 +248,7 @@ module_energy_batch_transportation_UCD_CORE_xml <- function(command, ...) {
                        "L254.IncomeElasticity",
                        "L254.demandFn_trn_coef",
                        "L244.SubregionalShares_trn",
+                       "L254.CalPrice_trn",
                        "L254.BaseService")  %>%
                         assign(xml_name, ., envir = curr_env)
 

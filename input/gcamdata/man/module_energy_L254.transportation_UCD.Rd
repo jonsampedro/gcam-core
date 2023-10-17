@@ -25,7 +25,7 @@ the generated outputs: \code{L254.Supplysector_trn}, \code{L254.FinalEnergyKeywo
 \code{L254.StubTranTechCost}, \code{L254.StubTranTechCoef}, \code{L254.StubTechCalInput_passthru},
 \code{L254.StubTechProd_nonmotor}, \code{L254.PerCapitaBased}, \code{L254.PriceElasticity},
 \code{L254.IncomeElasticity},  \code{L254.BaseService},
-\code{L244.SubregionalShares_trn} ,\code{L254.demandFn_trn_coef}, \code{L244.TrnShares}.
+\code{L244.SubregionalShares_trn} ,\code{L254.demandFn_trn_coef}, \code{L244.TrnShares}, \code{L254.CalPrice_trn}.
  The corresponding file in the
 original data system was \code{L254.transportation_UCD.R} (energy level2).
 }
