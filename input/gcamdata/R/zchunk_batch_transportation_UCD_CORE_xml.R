@@ -180,6 +180,12 @@ module_energy_batch_transportation_UCD_CORE_xml <- function(command, ...) {
 
       #Create xmls
       create_xml(xml_name) %>%
+        add_xml_data(L254.demandFn_trn_coef, "DemandFunction_trn_coef") %>%
+        add_xml_data(L254.CalPrice_trn, "CalPrice_trn") %>%
+        add_xml_data(L254.PerCapitaBased_SSP, "PerCapitaBased") %>%
+        add_xml_data(L254.PriceElasticity_SSP, "PriceElasticity") %>%
+        add_xml_data(L254.IncomeElasticity_SSP, "IncomeElasticity") %>%
+        add_xml_data(L254.BaseService_SSP, "BaseService") %>%
         add_logit_tables_xml(L254.Supplysector_trn_SSP, "Supplysector") %>%
         add_xml_data(L254.FinalEnergyKeyword_trn_SSP, "FinalEnergyKeyword") %>%
         add_logit_tables_xml(L254.tranSubsectorLogit_SSP, "tranSubsectorLogit", "tranSubsector") %>%
@@ -209,12 +215,6 @@ module_energy_batch_transportation_UCD_CORE_xml <- function(command, ...) {
         add_xml_data(L254.StubTechCalInput_passthru, "StubTranTechCalInput") %>%
         add_xml_data(L254.StubTechProd_nonmotor, "StubTranTechProd") %>%
         add_xml_data(L244.SubregionalShares_trn, "SubregionalShares_trn") %>%
-        add_xml_data(L254.PerCapitaBased_SSP, "PerCapitaBased") %>%
-        add_xml_data(L254.PriceElasticity_SSP, "PriceElasticity") %>%
-        add_xml_data(L254.IncomeElasticity_SSP, "IncomeElasticity") %>%
-        add_xml_data(L254.BaseService_SSP, "BaseService") %>%
-        add_xml_data(L254.demandFn_trn_coef, "DemandFunction_trn_coef") %>%
-        add_xml_data(L254.CalPrice_trn, "CalPrice_trn") %>%
         add_precursors("L254.Supplysector_trn",
                        "L254.FinalEnergyKeyword_trn",
                        "L254.tranSubsectorLogit",

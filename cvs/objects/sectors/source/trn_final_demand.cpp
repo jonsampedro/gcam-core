@@ -102,7 +102,8 @@ void TrnFinalDemand::toDebugXML( const int aPeriod,
 
     // write the xml for the class members.
     XMLWriteElement( mBaseService[ aPeriod ], "base-service", aOut, aTabs );
-    XMLWriteElement(mTrnCoef[ aPeriod ], "coef_trn", aOut, aTabs );
+    XMLWriteElement(mTrnCoef, "coef_trn", aOut, aTabs );
+    XMLWriteElement(mBasePriceTrn, "basePrice", aOut, aTabs);
     XMLWriteElement(mSubregIncomeShare[ aPeriod ], "subregional-income-share", aOut, aTabs );
     XMLWriteElement(mSubregPopShare[ aPeriod ], "subregional-population-share", aOut, aTabs );
 
@@ -167,17 +168,19 @@ void TrnFinalDemand::setFinalDemand( const string& aRegionName,
 
     
     // Subregional population
-    double subregionalPopulation = aDemographics * mSubregPopShare * CONV_POP_THOUS;
+    double subregionalPopulation = aDemographics->getTotal(aPeriod) * mSubregPopShare[aPeriod] * CONV_POP_THOUS;
 
     // Subregional income 
-    double subregionalIncome = (aGDP * mSubregIncomeShare) / subregionalPopulation;
+    double subregionalIncome = (aGDP->getPPPGDPperCap(aPeriod) * aDemographics->getTotal(aPeriod) * mSubregIncomeShare[aPeriod]) / subregionalPopulation;
 
     // Price
-    double price = getPricePaid(aRegionName, aPeriod);
+    const double PriceAdjustParam = mBasePriceTrn - getPricePaid(aRegionName, scenario->getModeltime()->getFinalCalibrationPeriod());
+    double price_adj = getPricePaid(aRegionName, aPeriod);
+    double price = price_adj + PriceAdjustParam;
 
 
     // Function
-    double mServiceDemand = mTrnCoef * subregionalIncome * price * subregionalPopulation;
+    mServiceDemands[aPeriod] = mTrnCoef * subregionalIncome * price * subregionalPopulation;
 
 
     // Set the service demand into the marketplace.

@@ -119,7 +119,10 @@ protected:
         DEFINE_VARIABLE(SIMPLE, "name", mName, std::string),
 
         //! Coefficient to estimate pass_km demand                      
-        DEFINE_VARIABLE(SIMPLE, "coef_trn", mTrnCoef),
+        DEFINE_VARIABLE(SIMPLE, "coef_trn", mTrnCoef, Value),
+
+        //! Coefficient to adjust trn prices                       
+        DEFINE_VARIABLE(SIMPLE, "basePrice", mBasePriceTrn, Value),
 
         //! Income share 
         DEFINE_VARIABLE(ARRAY, "subregional-income-share", mSubregIncomeShare, objects::PeriodVector<Value>),
