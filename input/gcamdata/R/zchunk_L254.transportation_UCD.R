@@ -17,8 +17,8 @@
 #' \code{L254.GlobalRenewTech_nonmotor}, \code{L254.GlobalTranTechInterp}, \code{L254.GlobalTranTechShrwt},
 #' \code{L254.GlobalTranTechSCurve}, \code{L254.StubTranTechCalInput}, \code{L254.StubTranTechLoadFactor},
 #' \code{L254.StubTranTechCost}, \code{L254.StubTranTechCoef}, \code{L254.StubTechCalInput_passthru},
-#' \code{L254.StubTechProd_nonmotor}, \code{L254.PerCapitaBased}, \code{L254.PerCapitaBased_trn}, \code{L254.PriceElasticity}, \code{L254.PriceElasticity_trn},
-#' \code{L254.IncomeElasticity}, \code{L254.IncomeElasticity_trn},  \code{L254.BaseService}, \code{L254.BaseService_trn},
+#' \code{L254.StubTechProd_nonmotor}, \code{L254.PerCapitaBased}, \code{L254.PriceElasticity},
+#' \code{L254.IncomeElasticity},  \code{L254.BaseService},
 #' \code{L244.SubregionalShares_trn} ,\code{L254.demandFn_trn_coef}, \code{L244.TrnShares}, \code{L254.CalPrice_trn}.
 #'  The corresponding file in the
 #' original data system was \code{L254.transportation_UCD.R} (energy level2).
@@ -100,13 +100,9 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
              "L254.StubTechCalInput_passthru",
              "L254.StubTechProd_nonmotor",
              "L254.PerCapitaBased",
-             "L254.PerCapitaBased_trn",
              "L254.PriceElasticity",
-             "L254.PriceElasticity_trn",
              "L254.IncomeElasticity",
-             "L254.IncomeElasticity_trn",
              "L254.BaseService",
-             "L254.BaseService_trn",
              "L244.TrnShares",
              "L244.SubregionalShares_trn",
              "L254.demandFn_trn_coef",
@@ -216,8 +212,7 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
       mutate(group = gsub("resid_", "", gcam.consumer)) %>%
       select(-gcam.consumer) %>%
       repeat_add_columns(tibble(unique(subset(A54.demand, perCapitaBased == 1, select = energy.final.demand)))) %>%
-      unite(trn.final.demand, c("energy.final.demand", "group"), sep = "_") %>%
-      select(-energy.final.demand)
+      unite(energy.final.demand, c("energy.final.demand", "group"), sep = "_")
 
 
     # ===================================================
@@ -278,7 +273,6 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
       rename(basePrice = value) %>%
       # filter final calibration year
       filter(year == MODEL_FINAL_BASE_YEAR) %>%
-      rename(trn.final.demand = energy.final.demand) %>%
       select(LEVEL2_DATA_NAMES[["CalPrice_trn"]])
 
 
@@ -1137,49 +1131,9 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
 
     # Get the coefficients to write them to the xml and be read by the trn-function:
     L254.demandFn_trn_coef <- trn_data_fin %>%
-      unite(trn.final.demand, c("energy.final.demand", "group"), sep = "_") %>%
+      unite(energy.final.demand, c("energy.final.demand", "group"), sep = "_") %>%
       select(LEVEL2_DATA_NAMES[["DemandFunction_trn_coef"]]) %>%
       distinct()
-
-    #-----------------------------------
-    # Adjust trn_pass outcomes to trn.final.demand
-
-    # PerCapita based
-    L254.PerCapitaBased_trn <- L254.PerCapitaBased %>%
-      filter(grepl("pass", energy.final.demand) | grepl("aviation", energy.final.demand)) %>%
-      rename(trn.final.demand = energy.final.demand) %>%
-      select(LEVEL2_DATA_NAMES[["PerCapitaBased_trn"]],"sce")
-
-    L254.PerCapitaBased <- L254.PerCapitaBased %>%
-      filter(grepl("freight", energy.final.demand) | grepl("shipping", energy.final.demand))
-
-    # Income elasticity
-    L254.IncomeElasticity_trn <- L254.IncomeElasticity %>%
-      filter(grepl("pass", energy.final.demand) | grepl("aviation", energy.final.demand)) %>%
-      rename(trn.final.demand = energy.final.demand) %>%
-      select(LEVEL2_DATA_NAMES[["IncomeElasticity_trn"]],"sce")
-
-    L254.IncomeElasticity <- L254.IncomeElasticity %>%
-      filter(grepl("freight", energy.final.demand) | grepl("shipping", energy.final.demand))
-
-    # Price elasticity
-    L254.PriceElasticity_trn <- L254.PriceElasticity %>%
-      filter(grepl("pass", energy.final.demand) | grepl("aviation", energy.final.demand)) %>%
-      rename(trn.final.demand = energy.final.demand) %>%
-      select(LEVEL2_DATA_NAMES[["PriceElasticity_trn"]],"sce")
-
-    L254.PriceElasticity <- L254.PriceElasticity %>%
-      filter(grepl("freight", energy.final.demand) | grepl("shipping", energy.final.demand))
-
-
-    # Base Service
-    L254.BaseService_trn <- L254.BaseService %>%
-      filter(grepl("pass", energy.final.demand) | grepl("aviation", energy.final.demand)) %>%
-      rename(trn.final.demand = energy.final.demand) %>%
-      select(LEVEL2_DATA_NAMES[["BaseService_trn"]],"sce")
-
-    L254.BaseService <- L254.BaseService %>%
-      filter(grepl("freight", energy.final.demand) | grepl("shipping", energy.final.demand))
 
 
 
@@ -1484,14 +1438,6 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
       add_precursors("common/GCAM_region_names", "energy/A54.demand", "energy/A54.demand_ssp1") ->
       L254.PerCapitaBased
 
-    L254.PerCapitaBased_trn %>%
-      add_title("Per-capita based flag for transportation final demand") %>%
-      add_units("NA") %>%
-      add_comments("Per-capita based flag information written for all GCAM regions") %>%
-      add_legacy_name("L254.PerCapitaBased_trn") %>%
-      add_precursors("common/GCAM_region_names", "energy/A54.demand", "energy/A54.demand_ssp1") ->
-      L254.PerCapitaBased_trn
-
     L254.PriceElasticity %>%
       add_title("Price elasticity of transportation final demand") %>%
       add_units("Unitless") %>%
@@ -1499,14 +1445,6 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
       add_legacy_name("L254.PriceElasticity") %>%
       add_precursors("common/GCAM_region_names", "energy/A54.demand", "energy/A54.demand_ssp1") ->
       L254.PriceElasticity
-
-    L254.PriceElasticity_trn %>%
-      add_title("Price elasticity of transportation final demand") %>%
-      add_units("Unitless") %>%
-      add_comments("Price elasticity information written for all GCAM regions and model future years") %>%
-      add_legacy_name("L254.PriceElasticity_trn") %>%
-      add_precursors("common/GCAM_region_names", "energy/A54.demand", "energy/A54.demand_ssp1") ->
-      L254.PriceElasticity_trn
 
 
     L254.IncomeElasticity %>%
@@ -1516,14 +1454,6 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
       add_legacy_name("L254.IncomeElasticity") %>%
       add_precursors("common/GCAM_region_names", "energy/A54.demand") ->
       L254.IncomeElasticity
-
-    L254.IncomeElasticity_trn %>%
-      add_title("Income elasticity of transportation final demand") %>%
-      add_units("Unitless") %>%
-      add_comments("Income elasticity information written for all GCAM regions and model future years") %>%
-      add_legacy_name("L254.IncomeElasticity_trn") %>%
-      add_precursors("common/GCAM_region_names", "energy/A54.demand") ->
-      L254.IncomeElasticity_trn
 
 
     L254.BaseService %>%
@@ -1536,17 +1466,6 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
                      "L154.loadfactor_R_trn_m_sz_tech_F_Y", "L154.in_EJ_R_trn_m_sz_tech_F_Yh",
                      "energy/A54.CalPrice_trn", "socioeconomics/income_shares", "L101.Pop_thous_R_Yh", "L102.pcgdp_thous90USD_Scen_R_Y") ->
       L254.BaseService
-
-    L254.BaseService_trn %>%
-      add_title("Base-year service output of transportation final demand") %>%
-      add_units("units") %>%
-      add_comments("comments describing how data generated") %>%
-      add_legacy_name("L254.BaseService_trn") %>%
-      add_precursors("common/GCAM_region_names", "energy/A54.sector", "energy/mappings/UCD_techs", "energy/mappings/UCD_techs_revised", "energy/mappings/UCD_size_class_revisions",
-                     "L154.out_mpkm_R_trn_nonmotor_Yh", "L154.intensity_MJvkm_R_trn_m_sz_tech_F_Y",
-                     "L154.loadfactor_R_trn_m_sz_tech_F_Y", "L154.in_EJ_R_trn_m_sz_tech_F_Yh",
-                     "energy/A54.CalPrice_trn", "socioeconomics/income_shares", "L101.Pop_thous_R_Yh", "L102.pcgdp_thous90USD_Scen_R_Y") ->
-      L254.BaseService_trn
 
 
     L244.TrnShares %>%
@@ -1591,8 +1510,8 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
                 L254.GlobalRenewTech_nonmotor, L254.GlobalTranTechInterp, L254.GlobalTranTechShrwt,
                 L254.GlobalTranTechSCurve, L254.GlobalTranTechProfitShutdown, L254.StubTranTechCalInput, L254.StubTranTechLoadFactor,
                 L254.StubTranTechCost, L254.StubTranTechCoef, L254.StubTechCalInput_passthru,
-                L254.StubTechProd_nonmotor, L254.PerCapitaBased, L254.PerCapitaBased_trn, L254.PriceElasticity, L254.PriceElasticity_trn,
-                L254.IncomeElasticity, L254.IncomeElasticity_trn, L254.BaseService, L254.BaseService_trn,
+                L254.StubTechProd_nonmotor, L254.PerCapitaBased, L254.PriceElasticity,
+                L254.IncomeElasticity, L254.BaseService,
                 L244.TrnShares, L244.SubregionalShares_trn, L254.demandFn_trn_coef, L254.CalPrice_trn)
   } else {
     stop("Unknown command")
