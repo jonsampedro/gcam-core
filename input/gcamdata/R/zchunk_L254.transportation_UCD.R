@@ -799,7 +799,6 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
                          agg.supplysector = if_else(grepl("trn_freight", supplysector), "trn_freight", agg.supplysector)))
 
 
-
     # Allocate the calibrated energy
     L254.StubTranTechCalInput_basetable <- L254.StubTranTechCalInput_basetable %>%
       left_join_error_no_match(adj_supsec, by = "supplysector") %>%
@@ -892,6 +891,71 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
       summarise(coefficient = mean(coefficient)) %>%
       ungroup() %>%
       select(LEVEL2_DATA_NAMES[["StubTranTechCoef"]],sce)
+
+    #===========================================================
+
+    sect_adj_df <- get_data(all_data, "energy/A54.sector",strip_attributes = TRUE) %>%
+      filter(supplysector != "trn_pass_road_LDV_2W",
+             supplysector != "trn_pass_road_bus",
+             supplysector != "trn_shipping_intl",
+             !grepl("freight", supplysector)) %>%
+      select(supplysector)
+
+
+    # Adjust L154.trn_serv_shares to different modes:
+
+    L254.StubTranTechCost_adjMode <- L254.StubTranTechCost %>%
+      filter(!grepl("freight", supplysector),
+             !grepl("shipping", supplysector)) %>%
+      mutate(supplysector = sub("_([^_]*)$", "_split_\\1", supplysector)) %>%
+      tidyr::separate(supplysector, into = c("supplysector", "group"), sep = "_split_", extra = "merge", fill = "right") %>%
+      rename(energy.final.demand = supplysector,
+             scenario = sce) %>%
+      group_by(scenario, region, energy.final.demand, tranSubsector ,year, group) %>%
+      summarise(input.cost = mean(input.cost)) %>%
+      ungroup() %>%
+      distinct()
+
+    L154.trn_serv_shares_mode <- L154.trn_serv_shares %>%
+      select(-energy.final.demand) %>%
+      repeat_add_columns(tibble(energy.final.demand = unique(sect_adj_df$supplysector))) %>%
+      left_join(UCD_techs %>%
+                  select(energy.final.demand = supplysector, tranSubsector ) %>%
+                  mutate(energy.final.demand = sub("_([^_]*)$", "_split_\\1", energy.final.demand)) %>%
+                  tidyr::separate(energy.final.demand, into = c("energy.final.demand", "group"), sep = "_split_", extra = "merge", fill = "right") %>%
+                  select(-group) , by = "energy.final.demand") %>%
+      #select(-energy.final.demand) %>%
+      distinct() %>%
+      arrange(scenario, energy.final.demand, region, tranSubsector) %>%
+      filter(scenario == "CORE") %>%
+      left_join(L254.tranSubsectorSpeed %>%
+                  rename(scenario = sce) %>%
+                  select(-supplysector) %>%
+                  distinct(), by = c("scenario","region", "year", "tranSubsector")) %>%
+      left_join(L254.tranSubsectorVOTT %>%
+                rename(scenario = sce) %>%
+                select(-supplysector) %>%
+                distinct(), by = c("scenario","region", "tranSubsector")) %>%
+      select(scenario, region, year, group, energy.final.demand, tranSubsector, serv.share, speed, time.value.multiplier) %>%
+      replace_na(list(time.value.multiplier = 1)) %>%
+      filter(complete.cases(.)) %>%
+      mutate(speed_VOTT = speed / time.value.multiplier) %>%
+      select(scenario, region, year, group, energy.final.demand, tranSubsector, serv.share, speed_VOTT) %>%
+      mutate(energy.final.demand.adj = if_else(grepl("LDV", energy.final.demand), "trn_pass_road", energy.final.demand)) %>%
+      group_by(scenario, region, year, group, energy.final.demand.adj) %>%
+      mutate(avg_sect_speedVOTT = mean(speed_VOTT)) %>%
+      ungroup() %>%
+      select(-energy.final.demand.adj) %>%
+      left_join_error_no_match(L254.StubTranTechCost_adjMode, by = c("scenario", "region", "year", "group", "energy.final.demand", "tranSubsector")) %>%
+      left_join_error_no_match(L102.pcgdp_thous90USD_Scen_R_Y_gr %>%
+                                 filter(scenario == socioeconomics.BASE_GDP_SCENARIO) %>%
+                                 select(-GCAM_region_ID, -scenario), by = c("region", "year", "group"))
+
+
+
+
+
+    #===========================================================
 
     # L254.StubTechCalInput_passthru: calibrated input of passthrough technologies
     # First, need to calculate the service output for all tranTechnologies (= calInput * loadFactor * unit_conversion / (coef * unit conversion))
