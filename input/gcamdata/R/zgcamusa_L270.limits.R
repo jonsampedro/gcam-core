@@ -12,7 +12,8 @@
 #' @param ... other optional parameters, depending on command
 #' @return Depends on \code{command}: either a vector of required inputs,
 #' a vector of output names, or (if \code{command} is "MAKE") all
-#' the generated outputs: \code{L270.CreditMkt_USA}, \code{L270.CreditInput_elecS_USA}, \code{L270.NegEmissBudget_USA},
+#' the generated outputs: \code{L270.CreditMkt_USA}, \code{L270.CreditInput_elecS_USA}, \code{L270.NegEmissBudgetMaxPrice_USA},
+#' \code{paste0( "L270.NegEmissBudget_USA_", c("GCAM3", paste0("SSP", 1:5), paste0("gSSP", 1:5)) )}.
 #' @details Add 50 states to USA market for GCAM policy constraints which enforce limits
 #' to liquid feedstocks and the amount of subsidies given for net negative emissions.
 #' @importFrom assertthat assert_that
@@ -48,7 +49,7 @@ module_gcamusa_L270.limits <- function(command, ...) {
     L270.CreditMkt <- get_data(all_data, "L270.CreditMkt", strip_attributes = TRUE)
     L270.CreditOutput <- get_data(all_data, "L270.CreditOutput", strip_attributes = TRUE)
     L270.CreditInput_elec <- get_data(all_data, "L270.CreditInput_elec", strip_attributes = TRUE)
-    L270.NegEmissBudget <- get_data(all_data, "L270.NegEmissBudget")
+    L270.NegEmissBudget <- get_data(all_data, "L270.NegEmissBudget", strip_attributes = TRUE)
 
     # ===================================================
     # Data Processing
@@ -75,8 +76,8 @@ module_gcamusa_L270.limits <- function(command, ...) {
       # and are removed here.
       anti_join(A23.elecS_tech_availability,
                 by = c("Electric.sector" = "supplysector",
-                        "subsector.name" = "subsector",
-                        "technology" = "stub.technology")) %>%
+                       "subsector.name" = "subsector",
+                       "technology" = "stub.technology")) %>%
       select(Electric.sector, subsector.name, Electric.sector.technology, to.technology,
              year, minicam.energy.input, coefficient) %>%
       rename(sector.name = Electric.sector, subsector.name0 = subsector.name,
@@ -120,7 +121,10 @@ module_gcamusa_L270.limits <- function(command, ...) {
       L270.CreditInput_elecS_USA
 
     L270.NegEmissBudget_USA %>%
-      # inherit most attributes
+      add_title("Sets up the negative emissions budget RES market") %>%
+      add_units("NA") %>%
+      add_comments("Sets up the RES constraint market including boiler plate such") %>%
+      add_comments("as the policy name and market as well as unit strings") %>%
       add_precursors("gcam-usa/states_subregions", "L270.NegEmissBudget") ->
       L270.NegEmissBudget_USA
 
