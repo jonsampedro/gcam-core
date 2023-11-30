@@ -42,7 +42,6 @@
 
 #include "emissions/include/readin_control.h"
 #include "containers/include/scenario.h"
-#include "containers/include/gdp.h"
 #include "util/base/include/xml_helper.h"
 #include "util/base/include/xml_parse_helper.h"
 #include "util/logger/include/ilogger.h"
@@ -143,12 +142,12 @@ void ReadInControl::initCalc( const string& aRegionName,
     }
 }
 
-void ReadInControl::calcEmissionsReduction( const std::string& aRegionName, const int aPeriod, const GDP* aGDP ) {
+double ReadInControl::calcEmissionsReduction( const std::string& aRegionName, const int aPeriod ) {
     double reduction = 0.0;
     
     if ( (*mFutureEmissionsFactors)[ mTechBuildPeriod ] != 0.0 ) {
         reduction = ( (*mFutureEmissionsFactors)[ mTechBuildPeriod ] - (*mFutureEmissionsFactors)[ aPeriod ] ) / (*mFutureEmissionsFactors)[ mTechBuildPeriod ];
     }
     
-    setEmissionsReduction( reduction );
+    return reduction;
 }

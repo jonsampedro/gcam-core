@@ -50,7 +50,6 @@
 #include "util/base/include/data_definition_util.h"
 
 // Forward declarations
-class GDP;
 class Demographic;
 class IInfo;
 class Tabs;
@@ -58,6 +57,8 @@ class Tabs;
 // Need to forward declare the subclasses as well.
 class EnergyFinalDemand;
 class TrnFinalDemand;
+class FixedFinalDemand;
+
 
 /*! 
  * \ingroup Objects
@@ -104,12 +105,10 @@ public:
      * \details This method is called at the beginning of each period so that
      *          the object may perform any initializations for the model period.
      * \param aRegionName Region name.
-     * \param aGDP Regional GDP.
      * \param aDemograhics Region demographics.
      * \param aPeriod Model period.
      */
     virtual void initCalc( const std::string& aRegionName,
-                           const GDP* aGDP,
                            const Demographic* aDemographics,
                            const int aPeriod ) = 0;
     
@@ -126,7 +125,6 @@ public:
      */
     virtual void setFinalDemand( const std::string& aRegionName,
                                  const Demographic* aDemographics,
-                                 const GDP* aGDP,
                                  const int aPeriod ) = 0;
 
     /*!
@@ -149,9 +147,10 @@ protected:
         /* Declare all subclasses of AFinalDemand to allow automatic traversal of the
          * hierarchy under introspection.
          */
-        DEFINE_SUBCLASS_FAMILY( AFinalDemand, EnergyFinalDemand, TrnFinalDemand)
+        DEFINE_SUBCLASS_FAMILY(AFinalDemand, EnergyFinalDemand, TrnFinalDemand, FixedFinalDemand)
     )
 };
+
 
 // Inline function definitions.
 inline AFinalDemand::~AFinalDemand(){}

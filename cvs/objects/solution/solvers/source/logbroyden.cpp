@@ -202,14 +202,21 @@ SolverComponent::ReturnCode LogBroyden::solve(SolutionInfoSet &solnset, int peri
     
     solverLog << "Initial market state:\nmkt    \tprice   \tsupply  \tdemand\n";
     std::vector<SolutionInfo> solvables = solnset.getSolvableSet();
+    bool isAllSolved = true;
     for(size_t i=0; i<solvables.size(); ++i) {
         allCols.push_back(i);
         solverLog << std::setw( 8 ) << i << "\t"
                   << std::setw( 8 ) << solvables[i].getPrice() << "\t"
                   << std::setw( 8 ) << solvables[i].getSupply() << "\t"
                   << std::setw( 8 ) << solvables[i].getDemand()
-                  << "\t\t" << solvables[i].getName() << "\n"; 
-    } 
+                  << "\t\t" << solvables[i].getName() << "\n";
+        isAllSolved &= solvables[i].isSolved();
+    }
+    
+    if( isAllSolved ) {
+        solverLog << "All solvable markets are already solved.  Exiting." << std::endl;
+        return SUCCESS;
+    }
 
     Timer& solverTimer = TimerRegistry::getInstance().getTimer( TimerRegistry::SOLVER );
     solverTimer.start();
@@ -394,6 +401,7 @@ int LogBroyden::bsolve(VecFVec &F, UBVECTOR &x, UBVECTOR &fx,
     const int TRACK_NUM_PAST_F_VALUES = 4;
     std::queue<double> past_f_values;
     past_f_values.push(f0);
+    const double LARGE_DIAG_THRESHOLD = 1000000.0;
   if(f0 < FTINY) {
     // Guard against F=0 since it can cause a NaN in our solver.  This
     // is a more stringent test than our regular convergence test
@@ -408,7 +416,18 @@ int LogBroyden::bsolve(VecFVec &F, UBVECTOR &x, UBVECTOR &fx,
     solverLog << "Internal iteration count ( mPerIter )= " << mPerIter << "\n";
     cSolInfo->printMarketInfo("Broyden ", calcCounter->getPeriodCount(), singleLog);
     for(int j=0;j<F.narg();++j) {
-      jdiag[j] = B(j,j);
+        double currDiag = B(j,j);
+        // avoid very large / small diagonal values in the jacobian which are
+        // almost always due to discontinous behavior in the underlying market
+        // this should help avoid having to spin our wheels with excessive
+        // backtracking / slow progress + getting kicked out
+        if(currDiag != 0 && fabs(currDiag) > LARGE_DIAG_THRESHOLD) {
+            currDiag *= LARGE_DIAG_THRESHOLD / fabs(currDiag);
+        }
+        else if(currDiag != 0 && fabs(currDiag) < 1.0/LARGE_DIAG_THRESHOLD) {
+            currDiag /= fabs(currDiag) * LARGE_DIAG_THRESHOLD;
+        }
+      jdiag[j] = currDiag;
     }
     static_cast<LogEDFun&>(F).setSlope(jdiag);
     double jdmax=0.0, jdmin=0.0;
@@ -478,22 +497,22 @@ int LogBroyden::bsolve(VecFVec &F, UBVECTOR &x, UBVECTOR &fx,
       // start with partial pivot LU decomposition as it is so fast to execute and
       // see if we need to fall back to an alternative if it doesn't "perform" well
       Eigen::PartialPivLU<UBMATRIX> luPartialPiv(B);
-      dx = luPartialPiv.solve(-1.0 * fx);
+      dx = luPartialPiv.solve(-fx);
       double dxmag = sqrt(dx.dot(dx));
       if(luPartialPiv.determinant() == 0 || !util::isValidNumber(dxmag)) {
           // singular or badly messed up Jacobian, going to have to use SVD
           solverLog << "Doing SVD, old dxmag:  " << dxmag;
           Eigen::BDCSVD<UBMATRIX> svdSolver(B, Eigen::ComputeThinU | Eigen::ComputeThinV);
           // SVD uses a threshold to determine which elements to treat as singular
-          // however it is applied relative to the largest diaganol element and we seem
+          // however it is applied relative to the largest diagonal element and we seem
           // to have some really large ones.  So even when setting what seems like a small
           // value here it normalizes to something large enough that it suppresses behavior
-          // in markets which should be fine to operate on.  Thus we have set it explicitly
-          // to zero, a.k.a only the elements that truly have no behavior get suppressed
-          // ideally we could improve upon this
+          // in markets which should be fine to operate on.  Given we have added a separate
+          // suppression on large diagonal values above we can apply a reasonable threshold.
+          // without that we should set this to zero (i.e. only suppress truly singular cols)
           const double small_threshold = 0;
           svdSolver.setThreshold(small_threshold);
-          dx = svdSolver.solve(-1.0 * fx);
+          dx = svdSolver.solve(-fx);
           dxmag = sqrt(dx.dot(dx));
           solverLog << " new dxmag: " << dxmag << std::endl;
       }
@@ -525,8 +544,8 @@ int LogBroyden::bsolve(VecFVec &F, UBVECTOR &x, UBVECTOR &fx,
           solverLog << "Taking a chance to try to jump out of local min.\n";
           // very little progress, might be stuck in a local minima
           // let's take a chance and take a step out of our comfort zone
-          // by accepting a step that makes f(x) at most 1000 time worse
-          fxIncr = 1000.0;
+          // by accepting a step that makes f(x) at most 100 time worse
+          fxIncr = 100.0;
           past_f_values = std::queue<double>();
       }
       UBVECTOR fxnew(fx.size());
@@ -539,7 +558,7 @@ int LogBroyden::bsolve(VecFVec &F, UBVECTOR &x, UBVECTOR &fx,
       // 1) B is not a descent direction.  If this is the first
       // failure starting from this x value, try a finite difference
       // jacobian
-      if(!lsfail) {
+      /*if(!lsfail) {
           // linesearch will have left off on some other price vector thus we
           // could have bad state data from which we calculate derivatives or
           // check if we we can return due to a relaxed convergence test
@@ -571,7 +590,7 @@ int LogBroyden::bsolve(VecFVec &F, UBVECTOR &x, UBVECTOR &fx,
           past_f_values.push(f0);
         // start the next iteration *without* updating x
         continue;
-      }
+      }*/
 
       // 2) The descent only continues for a very short distance
       // (roughly TOL*x0).  Maybe we're really close to a solution and
@@ -593,6 +612,7 @@ int LogBroyden::bsolve(VecFVec &F, UBVECTOR &x, UBVECTOR &fx,
       // We're not close enough to the solution, and we don't have a
       // good descent direction.  There are no good options at this point
       // so kick out and hope that the preconditioner can set us straight.
+      F(x, fx);
       solverLog << "linesearch failure\n";
       return -4;
     }
@@ -699,6 +719,7 @@ int LogBroyden::bsolve(VecFVec &F, UBVECTOR &x, UBVECTOR &fx,
         // got a very ill-behaved value in one of the variables.  Kick
         // it out and see if the bracketing routine can fix it.
         solverLog << "Repeated poor progress in Broyden solver.  Returning.\n";
+        F(x, fx);
         return -4;
       }
     }

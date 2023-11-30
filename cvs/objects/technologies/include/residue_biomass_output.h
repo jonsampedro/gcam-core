@@ -38,7 +38,6 @@
 #include "util/base/include/value.h"
 #include "util/base/include/time_vector.h"
 
-class PointSetCurve;
 class ALandAllocatorItem;
 
 /*!
@@ -118,7 +117,10 @@ public :
     virtual void setPhysicalOutput( const double aPrimaryOutput, const std::string& aRegionName,
                                     ICaptureComponent* aCaptureComponent, const int aPeriod );
 
-    virtual void setCurrencyOutput( const std::string& aRegionName,  const double aOutput, const int aPeriod ) { }
+    virtual void setCurrencyOutput( const double aPysicalOutput,
+                                    const double aCurrencyConversionPrice,
+                                    const std::string& aRegionName,
+                                    const int aPeriod ) { }
     virtual double getCurrencyOutput( const int aPeriod ) const { return 0; }
     
     virtual void toDebugXML( const int aPeriod, std::ostream& aOut, Tabs* aTabs ) const;
@@ -165,7 +167,7 @@ protected :
         DEFINE_VARIABLE( SIMPLE, "mass-to-energy", mMassToEnergy, double ),
 
         //! Piece-wise linear cost curve 
-        DEFINE_VARIABLE( CONTAINER | NOT_PARSABLE, "fract-harvested", mCostCurve, PointSetCurve* )
+        DEFINE_VARIABLE( SIMPLE | NOT_PARSABLE, "fract-harvested", mCostCurve, std::map<double, double> )
     )
 
     //! Weak pointer to the land leaf which corresponds to this biomass output

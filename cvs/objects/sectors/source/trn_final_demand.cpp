@@ -47,7 +47,7 @@
 #include "util/base/include/model_time.h"
 #include "util/base/include/ivisitor.h"
 #include "containers/include/scenario.h"
-#include "containers/include/gdp.h"
+#include "sectors/include/sector_utils.h"
 #include "containers/include/iinfo.h"
 #include "marketplace/include/marketplace.h"
 #include "demographics/include/demographic.h"
@@ -163,6 +163,8 @@ void TrnFinalDemand::setFinalDemand( const string& aRegionName,
                                         const GDP* aGDP,
                                         const int aPeriod )
 {
+
+      
     // unit conversions to convert from thous ppl to ppl
     const double CONV_POP_THOUS = 1e3;
 
@@ -171,7 +173,7 @@ void TrnFinalDemand::setFinalDemand( const string& aRegionName,
     double subregionalPopulation = aDemographics->getTotal(aPeriod) * mSubregPopShare[aPeriod] * CONV_POP_THOUS;
 
     // Subregional income 
-    double subregionalIncome = (aGDP->getPPPGDPperCap(aPeriod) * aDemographics->getTotal(aPeriod) * mSubregIncomeShare[aPeriod]) / subregionalPopulation;
+    double subregionalIncome = (SectorUtils::getGDPPPP(aRegionName, aPeriod) * mSubregIncomeShare[aPeriod]) / subregionalPopulation;
 
     // Price
     const double PriceAdjustParam = mBasePriceTrn - getPricePaid(aRegionName, scenario->getModeltime()->getFinalCalibrationPeriod());

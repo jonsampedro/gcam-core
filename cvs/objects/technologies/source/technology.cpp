@@ -50,7 +50,6 @@
 #include "util/base/include/tech_vector_parse_helper.h"
 #include "util/base/include/model_time.h"
 #include "marketplace/include/marketplace.h"
-#include "containers/include/gdp.h"
 #include "util/logger/include/ilogger.h"
 #include "technologies/include/icapture_component.h"
 #include "technologies/include/ishutdown_decider.h"
@@ -62,8 +61,8 @@
 #include "util/base/include/ivisitor.h"
 #include "containers/include/iinfo.h"
 #include "containers/include/info_factory.h"
-#include "sectors/include/subsector.h"
 #include "functions/include/idiscrete_choice.hpp"
+#include "sectors/include/sector_utils.h"
 
 #include "technologies/include/ioutput.h"
 #include "technologies/include/primary_output.h"
@@ -80,7 +79,6 @@
 #include "technologies/include/itechnical_change_calc.h"
 #include "technologies/include/standard_technical_change_calc.h"
 #include "functions/include/function_utils.h"
-#include "marketplace/include/marketplace.h"
 
 #include "util/base/include/initialize_tech_vector_helper.hpp"
 
@@ -137,7 +135,6 @@ void Technology::copy( const Technology& techIn ) {
     mYear = techIn.mYear;
     mCosts = techIn.mCosts;
     mFixedOutput = techIn.mFixedOutput;
-    mAlphaZero = techIn.mAlphaZero;
     mCapacityFactor = techIn.mCapacityFactor;
 
     // Copy the input vector.
@@ -148,11 +145,6 @@ void Technology::copy( const Technology& techIn ) {
     if( techIn.mCaptureComponent ) {
         delete mCaptureComponent;
         mCaptureComponent = techIn.mCaptureComponent->clone();
-    }
-
-    if( techIn.mTechChangeCalc ){
-        delete mTechChangeCalc;
-        mTechChangeCalc = techIn.mTechChangeCalc->clone();
     }
     
     for (CGHGIterator iter = techIn.mGHG.begin(); iter != techIn.mGHG.end(); ++iter) {
@@ -194,7 +186,6 @@ void Technology::clear()
     }
     delete mCaptureComponent;
     delete mCalValue;
-    delete mTechChangeCalc;
 }
 
 //! Initialize elemental data members.
@@ -202,7 +193,6 @@ void Technology::init()
 {
     mCaptureComponent = 0;
     mCalValue = 0;
-    mTechChangeCalc = 0;
     
     // This will be reinitialized in completeInit once the technologies start
     // year is known.
@@ -213,7 +203,6 @@ void Technology::init()
     mProductionFunction = 0;
     mPMultiplier = 1;
     mFixedOutput = -1;
-    mAlphaZero = 1;
     mCapacityFactor = 1;
 }
 
@@ -227,6 +216,14 @@ bool Technology::isSameType( const string& aType ) const {
 double Technology::getFixedOutputDefault()
 {
     return -1.0;
+}
+
+/*!
+ * \brief Check if vintaging is active in this Technology.
+ * \return True if vintaging is active.
+ */
+bool Technology::isVintagingActive() const {
+    return mLifetimeYears != calcDefaultLifetime();
 }
 
 /*!
@@ -386,11 +383,6 @@ void Technology::completeInit( const string& aRegionName,
         mCaptureComponent->completeInit( aRegionName, aSectorName );
     }
 
-    // Initialize the technical change calculator.
-    if( mTechChangeCalc ){
-        mTechChangeCalc->completeInit();
-    }
-
     // Initialize the cal data object.
     if( mCalValue ) {
         mCalValue->completeInit();
@@ -432,7 +424,6 @@ void Technology::toDebugXML( const int period,
     XMLWriteElement( mShareWeight, "share-weight", out, tabs );
     XMLWriteElement( mFixedOutput, "fixedOutput", out, tabs );
     XMLWriteElement( mLifetimeYears, "lifetime", out, tabs );
-    XMLWriteElement( mAlphaZero, "alpha-zero", out, tabs );
     XMLWriteElement( mCosts[ period ], "cost", out, tabs );
     XMLWriteElement( mPMultiplier, "pMultiplier", out, tabs );
     XMLWriteElementCheckDefault( mCapacityFactor, "capacity-factor", out, tabs, 1.0 );
@@ -447,10 +438,6 @@ void Technology::toDebugXML( const int period,
 
     if( mCaptureComponent ) {
         mCaptureComponent->toDebugXML( period, out, tabs );
-    }
-
-    if( mTechChangeCalc ) {
-        mTechChangeCalc->toDebugXML( period, out, tabs );
     }
 
     for( CShutdownDeciderIterator i = mShutdownDeciders.begin(); i != mShutdownDeciders.end(); ++i ){
@@ -540,6 +527,8 @@ void Technology::initCalc( const string& aRegionName,
     
     // Setup the structure for copying forward with information about the technology in this period.
     aPrevPeriodInfo.mInputs = &mInputs;
+    const ITechnology* prevTech = aPrevPeriodInfo.mPrevVintage;
+    aPrevPeriodInfo.mPrevVintage = this;
     
     // Do not attempt to perform further initializations if this technology is not operating
     if( !isOperating( aPeriod ) ) {
@@ -548,6 +537,11 @@ void Technology::initCalc( const string& aRegionName,
     
     mTechnologyInfo->setBoolean( "new-vintage-tech", mProductionState[ aPeriod ]->isNewInvestment() );
     mTechnologyInfo->setInteger( "initial-tech-period", scenario->getModeltime()->getyr_to_per( mYear ) );
+    double prevOutputForInvestment = aPeriod == 0 || !prevTech || (isVintagingActive() &&
+        // cover the case of transition from history with no vintaging
+        prevTech->isVintagingActive()) ?
+        0.0 : prevTech->getOutput(aPeriod -1);
+    mTechnologyInfo->setDouble( "prev-output-for-investment", prevOutputForInvestment );
 
     for( unsigned int i = 0; i < mGHG.size(); i++ ) {
         mGHG[ i ]->initCalc( aRegionName, mTechnologyInfo.get(), aPeriod );
@@ -566,13 +560,6 @@ void Technology::initCalc( const string& aRegionName,
 
     for( unsigned int i = 0; i < mOutputs.size(); ++i ) {
         mOutputs[ i ]->initCalc( aRegionName, aSectorName, aPeriod );
-    }
-
-    // Determine cumulative technical change. Alpha zero defaults to 1.
-    if( mTechChangeCalc ){
-        mAlphaZero = mTechChangeCalc->calcAndAdjustForTechChange( mInputs,
-                     aPrevPeriodInfo, mProductionFunction, aRegionName,
-                     aSectorName, aPeriod );
     }
 
     // If Calibration is Active, reinitialize share weights for calibration.
@@ -666,6 +653,11 @@ void Technology::postCalc( const string& aRegionName,
         for( unsigned int i = 0; i < mOutputs.size(); ++i ) {
             mOutputs[ i ]->postCalc( aRegionName, aPeriod );
         }
+        
+        bool isInitialTechYear = mProductionState[ aPeriod ]->isNewInvestment();
+        for(auto ghg : mGHG) {
+            ghg->postCalc(aRegionName, isInitialTechYear, mInputs, mOutputs, mCaptureComponent, aPeriod);
+        }
     }
 }
 
@@ -710,8 +702,8 @@ double Technology::getTotalGHGCost( const string& aRegionName,
  * \return Log of the numerator of the technology share.
  * \sa Subsector::calcShare()
  */ 
-double Technology::calcShare( const IDiscreteChoice* aChoiceFn,
-                              const GDP* aGDP,
+double Technology::calcShare( const std::string& aRegionName,
+                              const IDiscreteChoice* aChoiceFn,
                               int aPeriod ) const
 {
     const double mininf = -numeric_limits<double>::infinity();
@@ -733,7 +725,8 @@ double Technology::calcShare( const IDiscreteChoice* aChoiceFn,
 
     double fuelPrefElasticity = calcFuelPrefElasticity( aPeriod );
     if( fuelPrefElasticity != 0 ) {
-        double scaledGdpPerCapita = aGDP->getBestScaledGDPperCap( aPeriod );
+        double scaledGdpPerCapita = SectorUtils::getGDPPerCapScaled( aRegionName, aPeriod );
+
         assert( scaledGdpPerCapita > 0.0) ;
         logshare += fuelPrefElasticity * log( scaledGdpPerCapita );
     }
@@ -833,7 +826,6 @@ void Technology::production( const string& aRegionName,
                              const string& aSectorName,
                              double aVariableDemand,
                              double aFixedOutputScaleFactor,
-                             const GDP* aGDP,
                              const int aPeriod )
 {
     // Can't have a scale factor and positive demand.
@@ -870,9 +862,9 @@ void Technology::production( const string& aRegionName,
 
     // Calculate input demand.
     mProductionFunction->calcDemand( mInputs, primaryOutput, aRegionName, aSectorName,
-                                     1, aPeriod, 0, mAlphaZero );
+                                     1, aPeriod, 0, 1 );
 
-    calcEmissionsAndOutputs( aRegionName, primaryOutput, aGDP, aPeriod );
+    calcEmissionsAndOutputs( aRegionName, aSectorName, primaryOutput, aPeriod );
 }
 
 /*!
@@ -883,22 +875,42 @@ void Technology::production( const string& aRegionName,
  *          outputs are added to the marketplace by the Output and GHG objects.
  * \param aRegionName Region name.
  * \param aPrimaryOutput Primary output quantity.
- * \param aGDP Regional GDP container.
  * \param aPeriod Period.
  */
 void Technology::calcEmissionsAndOutputs( const string& aRegionName,
+                                          const string& aSectorName,
                                           const double aPrimaryOutput,
-                                          const GDP* aGDP,
                                           const int aPeriod )
 {
+    double currencyConversionPrice = getCurrencyConversionPrice( aRegionName, aSectorName, aPeriod );
     for( unsigned int i = 0; i < mOutputs.size(); ++i ) {
         mOutputs[ i ]->setPhysicalOutput( aPrimaryOutput, aRegionName, mCaptureComponent, aPeriod );
+        mOutputs[ i ]->setCurrencyOutput( aPrimaryOutput, currencyConversionPrice, aRegionName, aPeriod );
     }
 
     // calculate emissions for each gas after setting input and output amounts
     for( unsigned int i = 0; i < mGHG.size(); ++i ) {
-        mGHG[ i ]->calcEmission( aRegionName, mInputs, mOutputs, aGDP, mCaptureComponent, aPeriod );
+        mGHG[ i ]->calcEmission( aRegionName, mInputs, mOutputs, mCaptureComponent, aPeriod );
     }
+}
+
+/*!
+* \brief Return good or service price for converting quantity to dollar unit.
+* \details This is used to convert quantitites of different goods or services
+*          into common currency units. Currently use to convert to 1975 billion dollars
+*          which is the native units given the price and quantity units used accross the
+*          energy system.  Note, the macro calculations will be responsible for converting
+*          to 1990 million dollars which are the units it operates in.
+* \param aRegionName Region name.
+* \param aSectorName Sector name.
+* \param aPeriod Period.
+*/
+double Technology::getCurrencyConversionPrice( const string& aRegionName,
+                                               const string& aSectorName,
+                                               const int aPeriod ) const
+{
+    // mMarginalRevenue is in 1975$/GJ
+    return mMarginalRevenue;
 }
 
 /*! \brief Returns Technology name
@@ -1115,7 +1127,7 @@ double Technology::getTotalInputCost( const string& aRegionName,
     /*! \pre The technology must have a production function. */
     assert( mProductionFunction );
     double cost = mProductionFunction->calcCosts( mInputs, aRegionName,
-                                                  mAlphaZero, aPeriod );
+                                                  1, aPeriod );
     assert( cost >= 0 );
     return cost;
 }
@@ -1140,8 +1152,7 @@ double Technology::getEnergyCost( const string& aRegionName,
         if( mInputs[ i ]->hasTypeFlag( IInput::CAPITAL ) || mInputs[ i ]->hasTypeFlag( IInput::OM_FIXED ) ) {
             // TODO: Leontief assumption.
             cost -= mInputs[ i ]->getPrice( aRegionName, aPeriod )
-                    * mInputs[ i ]->getCoefficient( aPeriod )
-                    / mAlphaZero;
+                    * mInputs[ i ]->getCoefficient( aPeriod );
         }
     }
     assert( cost >= -util::getSmallNumber() );
@@ -1212,8 +1223,7 @@ double Technology::getCalibrationOutput( const bool aHasRequiredInput,
             double calInput = mInputs[ i ]->getCalibrationQuantity( aPeriod );
             if( calInput >= 0 ) {
                 // TODO: Remove leontief assumption.
-                totalCalOutput = calInput / mInputs[ i ]->getCoefficient( aPeriod )
-                                 * mAlphaZero;
+                totalCalOutput = calInput / mInputs[ i ]->getCoefficient( aPeriod );
                 break;
             }
         }
@@ -1570,7 +1580,7 @@ void interpolateChildVector( std::vector<T*> aInterpolated, std::vector<T*> aPre
     // Sort each vector by name to help identify mismatches.
     // Note that the vectors are passed by value on purpose so that these sorts
     // do not mess with ordering.
-    util::NameComparator<T> comp;
+    util::NameComparator comp;
     sort( aInterpolated.begin(), aInterpolated.end(), comp );
     sort( aPrev.begin(), aPrev.end(), comp );
     sort( aNext.begin(), aNext.end(), comp );

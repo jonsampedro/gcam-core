@@ -59,9 +59,7 @@ extern Scenario* scenario;
 //! Default constructor.
 NonCO2Emissions::NonCO2Emissions():
 AGHG(),
-mEmissionsDriver( 0 ),
-mShouldCalibrateEmissCoef( false ),
-mGDP( 0 )
+mEmissionsDriver( 0 )
 {
     // default unit for emissions
     mEmissionsUnit = "Tg";
@@ -93,9 +91,8 @@ void NonCO2Emissions::copy( const NonCO2Emissions& aOther ) {
     AGHG::copy( aOther );
     
     mEmissionsCoef = aOther.mEmissionsCoef;
-    mGDP = aOther.mGDP;
     
-    // Deep copy the auto_ptr
+    // Deep copy the unique_ptr
     if( aOther.mEmissionsDriver ){
         delete mEmissionsDriver;
         mEmissionsDriver = aOther.mEmissionsDriver->clone();
@@ -123,6 +120,8 @@ void NonCO2Emissions::copyGHGParameters( const AGHG* aPrevGHG ){
         abort();
     }
     
+    mEmissionsUnit = prevComplexGHG->mEmissionsUnit;
+    
     if( !mEmissionsDriver ) {
         mEmissionsDriver = prevComplexGHG->mEmissionsDriver->clone();
     }
@@ -137,9 +136,7 @@ void NonCO2Emissions::copyGHGParameters( const AGHG* aPrevGHG ){
     if( !mEmissionsCoef.isInited() ) {
         mEmissionsCoef = prevComplexGHG->mEmissionsCoef;
     }
-    
-    mGDP = prevComplexGHG->mGDP;
-    
+        
     // Always copy control objects from previous period except for those read in for this period that
     // have the same name and type as an object from the previous period. In that latter case, use
     // the newer one instead of copying the older one.
@@ -184,7 +181,6 @@ const string& NonCO2Emissions::getXMLNameStatic(){
 void NonCO2Emissions::toDebugXMLDerived( const int aPeriod, ostream& aOut, Tabs* aTabs ) const {
     XMLWriteElement( mEmissionsCoef, "emiss-coef", aOut, aTabs );
     XMLWriteElement( mInputEmissions, "input-emissions", aOut, aTabs );
-    XMLWriteElement( mAdjustedEmissCoef [ aPeriod ], "control-adjusted-emiss-coef", aOut, aTabs );
     
     mEmissionsDriver->toDebugXML( aPeriod, aOut, aTabs );
     
@@ -223,7 +219,7 @@ void NonCO2Emissions::initCalc( const string& aRegionName, const IInfo* aTechInf
     
     // Recalibrate the emissions coefficient if we have input emissions and this is
     // the initial vintage year of the technology.
-    mShouldCalibrateEmissCoef = mInputEmissions.isInited() && aTechInfo->getBoolean( "new-vintage-tech", true );
+    bool shouldCalibrateEmissCoef = mInputEmissions.isInited() && aTechInfo->getBoolean( "new-vintage-tech", true );
     
     for ( CControlIterator controlIt = mEmissionsControls.begin(); controlIt != mEmissionsControls.end(); ++controlIt ) {
         (*controlIt)->initCalc( aRegionName, aTechInfo, this, aPeriod );
@@ -231,7 +227,7 @@ void NonCO2Emissions::initCalc( const string& aRegionName, const IInfo* aTechInf
 
     // Ensure the user set an emissions coefficient in the input, either by reading it in, copying it from the previous period
     // or reading in the emissions
-    if( !mEmissionsCoef.isInited() && !mShouldCalibrateEmissCoef ){
+    if( !mEmissionsCoef.isInited() && !shouldCalibrateEmissCoef ){
         ILogger& mainLog = ILogger::getLogger( "main_log" );
         mainLog.setLevel( ILogger::WARNING );
         mainLog << "No emissions coefficient set for " << getName() << " in " << aRegionName << " in period " << aPeriod << endl;
@@ -276,16 +272,15 @@ double NonCO2Emissions::getGHGValue( const string& aRegionName,
     double emissMult = 1.0;
     if ( aPeriod > scenario->getModeltime()->getFinalCalibrationPeriod() ) {
         for ( CControlIterator controlIt = mEmissionsControls.begin(); controlIt != mEmissionsControls.end(); ++controlIt ) {
-            emissMult *= 1.0 - (*controlIt)->getEmissionsReduction( aRegionName, aPeriod, mGDP );
+            emissMult *= 1.0 - (*controlIt)->getEmissionsReduction( aRegionName, aPeriod );
         }
     }
     
     /*!
-     * \pre Attampting to recalibrate the emissions coefficient while trying to price the emissions
+     * \warning Attempting to recalibrate the emissions coefficient while trying to price the emissions
      *      will lead to inconsistent GHG value calculations because the value must be calculated
      *      before the new coefficient can be recalibrated.
      */
-    assert( !mShouldCalibrateEmissCoef );
     
     // Adjust the GHG tax by taking into account the fraction sequestered, storage costs and adjusting
     // for the emissions intensity as well as reductions.
@@ -300,27 +295,16 @@ double NonCO2Emissions::getGHGValue( const string& aRegionName,
 void NonCO2Emissions::calcEmission( const string& aRegionName,
                                     const vector<IInput*>& aInputs,
                                     const vector<IOutput*>& aOutputs,
-                                    const GDP* aGDP,
                                     ICaptureComponent* aSequestrationDevice,
                                     const int aPeriod )
 {
-    // Stash the GDP object if it has not been already.
-    if( !mGDP ) {
-        mGDP = aGDP;
-    }
-    
     // calculate the emissions driver
     const double emissDriver = mEmissionsDriver->calcEmissionsDriver( aInputs, aOutputs, aPeriod );
-    
-    // If emissions were read in and this is an appropraite period, compute emissions coefficient
-    if( mShouldCalibrateEmissCoef ) {
-        mEmissionsCoef = emissDriver > 0 ? mInputEmissions / emissDriver : 0;
-    }
     
     // Compute emissions reductions.
     double emissMult = 1.0;
     for ( CControlIterator controlIt = mEmissionsControls.begin(); controlIt != mEmissionsControls.end(); ++controlIt ) {
-            emissMult *= 1.0 - (*controlIt)->getEmissionsReduction( aRegionName, aPeriod, mGDP );
+            emissMult *= 1.0 - (*controlIt)->getEmissionsReduction( aRegionName, aPeriod );
     }
     
     // Compute emissions, including any reductions.
@@ -334,12 +318,42 @@ void NonCO2Emissions::calcEmission( const string& aRegionName,
     }
     
     mEmissions[ aPeriod ] = totalEmissions;
-    
-    // Stash actual emissions coefficient including impact of any controls. Needed by control
-    // objects that apply reductions relative to this emission coefficient value
-    mAdjustedEmissCoef[ aPeriod ]  = emissDriver > 0 ? totalEmissions / emissDriver : 0;
-    
     addEmissionsToMarket( aRegionName, aPeriod );
+}
+
+void NonCO2Emissions::postCalc( const string& aRegionName,
+                                const bool aIsInitialTechYear,
+                                const vector<IInput*>& aInputs,
+                                const vector<IOutput*>& aOutputs,
+                                ICaptureComponent* aSequestrationDevice,
+                                const int aPeriod )
+{
+    const double emissDriver = mEmissionsDriver->calcEmissionsDriver( aInputs, aOutputs, aPeriod );
+    bool shouldCalibrateEmissCoef = aIsInitialTechYear && mInputEmissions.isInited();
+    if(shouldCalibrateEmissCoef) {
+        // If emissions were read in and this is an appropriate period, compute emissions coefficient
+        mEmissionsCoef = emissDriver > 0 ? mInputEmissions / emissDriver : 0;
+        // We need to recalculate the emissions too now that we actually have the coefficient
+        // NOTE: It is an error to have model solution dependent on these emissions (i.e. have a policy
+        // on this GHG) while trying to calibrate input emissions as that creates a simultaneous equation,
+        // therefore postponing this to postCalc is safe to do.
+        // We explicitly check to make sure this wasn't attempted here
+        calcEmission(aRegionName, aInputs, aOutputs, aSequestrationDevice, aPeriod);
+        if(getGHGValue(aRegionName, aInputs, aOutputs, aSequestrationDevice, aPeriod) != 0.0) {
+            ILogger& mainLog = ILogger::getLogger( "main_log" );
+            mainLog.setLevel( ILogger::ERROR );
+            mainLog << "Attempting to calibrate an emissions coef while a policy is active is an error: " << getName()
+                    << " in " << aRegionName << endl;
+            abort();
+        }
+    }
+    
+    // back calculate the final adjusted emissions coef in case some control
+    // object needs to stash it
+    double adjustedEmissCoef = emissDriver > 0.0 ? mEmissions[aPeriod] / emissDriver : 0.0;
+    for(auto emissControl : mEmissionsControls) {
+        emissControl->setAdjustedEmissCoef(adjustedEmissCoef, aPeriod);
+    }
 }
 
 void NonCO2Emissions::doInterpolations( const int aYear, const int aPreviousYear,
@@ -359,26 +373,3 @@ void NonCO2Emissions::doInterpolations( const int aYear, const int aPreviousYear
      */
     assert( nextComplexEmiss );
 }
-
-/*!
- * \brief Get the emissions control adjusted emissions coefficient.
- * \details This method gives access to the actual emissions coefficient used
- *          in a given period that includes any adjustments made by all the
- *          emissions controls.  This value is saved during calcEmission so it
- *          may be used by some future emissions control object.
- * \param aPeriod The model period to get the coefficient.
- * \return The emissions coefficient adjusted by emissions controls.
- * \warning This value is a by product of calcEmission and therefore may change
- *          within each model iterations.  It is therefore only safe to retrieve
- *          the value for periods before the current model period.
- */
-double NonCO2Emissions::getAdjustedEmissCoef( const int aPeriod ) const
-{
-    /*!
-     * \pre The adjusted emissions coefficient has been calculated for this period.
-     */
-    assert( mAdjustedEmissCoef[ aPeriod ].isInited() );
-    
-    return mAdjustedEmissCoef[ aPeriod ];
-}
-

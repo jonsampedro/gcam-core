@@ -186,7 +186,7 @@ void NodeCarbonCalc::calcLandUseHistory()
                 diffLand[ i ] -= newDiff;
                 diffLandTotal -= newDiff;
                 assert( diffLand[ i ] == 0 || diffLandTotal == 0 );
-                mCarbonCalcs[ i ]->calcAboveGroundCarbonEmission( carbonStock[ i ], prevLand[ i ], prevLand[ i ] + newDiff,
+                mCarbonCalcs[ i ]->calcAboveGroundCarbonEmission( ICarbonCalc::eStoreResults, carbonStock[ i ], prevLand[ i ], prevLand[ i ] + newDiff,
                                                                   aboveGroundCarbonDensity[ i ], year,
                                                                   CarbonModelUtils::getEndYear(), mCarbonCalcs[ i ]->mTotalEmissionsAbove );
                 mCarbonCalcs[ i ]->calcBelowGroundCarbonEmission( -1 * newDiff * belowGroundCarbonDensity[ i ], year,
@@ -241,7 +241,7 @@ void NodeCarbonCalc::calcLandUseHistory()
                 double currCarbonMove = fractionOfGain * carbonStockMoved;
                 double carbonDiffAboveDensity = -1 * ( currCarbonMove / diffLand[ i ] - aboveGroundCarbonDensity[ i ] );
                 double carbonDiffBelow = -1 * ( diffLand[ i ] * belowGroundCarbonDensity[ i ] - fractionOfGain * carbonPrevBelow );
-                mCarbonCalcs[ i ]->calcAboveGroundCarbonEmission( 0, 0, diffLand[ i ], carbonDiffAboveDensity, year,
+                mCarbonCalcs[ i ]->calcAboveGroundCarbonEmission( ICarbonCalc::eStoreResults, 0, 0, diffLand[ i ], carbonDiffAboveDensity, year,
                                                                   CarbonModelUtils::getEndYear(), mCarbonCalcs[ i ]->mTotalEmissionsAbove );
                 mCarbonCalcs[ i ]->calcBelowGroundCarbonEmission( carbonDiffBelow, year, CarbonModelUtils::getEndYear(),
                                                                   mCarbonCalcs[ i ]->mTotalEmissionsBelow );
@@ -249,7 +249,6 @@ void NodeCarbonCalc::calcLandUseHistory()
                 // the carbon.
                 carbonStock[ i ] += currCarbonMove - ( mCarbonCalcs[ i ]->mTotalEmissionsAbove[ year ] - emissBeforeMove );
             }
-            mCarbonCalcs[ i ]->mTotalEmissions[ year ] = mCarbonCalcs[ i ]->mTotalEmissionsAbove[ year ] + mCarbonCalcs[ i ]->mTotalEmissionsBelow[ year ];
         }
         
         prevLand = currLand;
@@ -400,7 +399,7 @@ void NodeCarbonCalc::calc( const int aPeriod, const int aEndYear, const ICarbonC
                 // we need to be careful about accessing the carbon stock from a previous timestep
                 // when we are intending to calculate in eReverseCalc as the previous timestep may have
                 // already calculated in eStoreResults
-                mCarbonCalcs[ i ]->calcAboveGroundCarbonEmission( aCalcMode == ICarbonCalc::eReverseCalc && (year - 1) == prevModelYear ?
+                mCarbonCalcs[ i ]->calcAboveGroundCarbonEmission( aCalcMode, aCalcMode == ICarbonCalc::eReverseCalc && (year - 1) == prevModelYear ?
                                                                         mCarbonCalcs[ i ]->mSavedCarbonStock[ aPeriod - 1 ] :
                                                                         mCarbonCalcs[ i ]->mCarbonStock[ year - 1 ],
                                                                   prevLand[ i ], currLand[ i ], aboveGroundCarbonDensity[ i ], year, aEndYear,
@@ -425,7 +424,7 @@ void NodeCarbonCalc::calc( const int aPeriod, const int aEndYear, const ICarbonC
                     double carbonDiffAboveDensity = -1 * ( currCarbonMove / diffLandFromInternalByYear[ i ] - aboveGroundCarbonDensity[ i ] );
                     double carbonDiffBelow = -1 * ( diffLandFromInternalByYear[ i ] * belowGroundCarbonDensity[ i ] -
                         fractionOfGain * totalInternalCarbonBelowMovedByYear );
-                    mCarbonCalcs[ i ]->calcAboveGroundCarbonEmission( 0, 0, diffLandFromInternalByYear[ i ], carbonDiffAboveDensity,
+                    mCarbonCalcs[ i ]->calcAboveGroundCarbonEmission( aCalcMode, 0, 0, diffLandFromInternalByYear[ i ], carbonDiffAboveDensity,
                                                                       year, aEndYear, *currEmissionsAbove[ i ] );
                     mCarbonCalcs[ i ]->calcBelowGroundCarbonEmission( carbonDiffBelow, year, aEndYear, *currEmissionsBelow[ i ] );
                     // Adjust carbon stock to include the carbon being moved in minus any emissions because of moving
@@ -451,8 +450,6 @@ void NodeCarbonCalc::calc( const int aPeriod, const int aEndYear, const ICarbonC
                 for( year = prevModelYear + 1; year <= aEndYear; ++year ) {
                     mCarbonCalcs[ i ]->mTotalEmissionsAbove[ year ] += (*currEmissionsAbove[ i ])[ year ];
                     mCarbonCalcs[ i ]->mTotalEmissionsBelow[ year ] += (*currEmissionsBelow[ i ])[ year ];
-                    mCarbonCalcs[ i ]->mTotalEmissions[ year ] = mCarbonCalcs[ i ]->mTotalEmissionsAbove[ year ] +
-                        mCarbonCalcs[ i ]->mTotalEmissionsBelow[ year ];
                     mCarbonCalcs[ i ]->mSavedCarbonStock[ aPeriod - 1 ] = mCarbonCalcs[ i ]->mCarbonStock[ prevModelYear ];
                     mCarbonCalcs[ i ]->mSavedLandAllocation[ aPeriod - 1 ] = mCarbonCalcs[ i ]->mLandLeaf->getLandAllocation( mCarbonCalcs[ i ]->mLandLeaf->getName(), aPeriod - 1 );
                 }
@@ -461,8 +458,6 @@ void NodeCarbonCalc::calc( const int aPeriod, const int aEndYear, const ICarbonC
                 for( year = prevModelYear + 1; year <= aEndYear; ++year ) {
                     mCarbonCalcs[ i ]->mTotalEmissionsAbove[ year ] -= (*currEmissionsAbove[ i ])[ year ];
                     mCarbonCalcs[ i ]->mTotalEmissionsBelow[ year ] -= (*currEmissionsBelow[ i ])[ year ];
-                    mCarbonCalcs[ i ]->mTotalEmissions[ year ] = mCarbonCalcs[ i ]->mTotalEmissionsAbove[ year ] +
-                        mCarbonCalcs[ i ]->mTotalEmissionsBelow[ year ];
                 }
             }
             else if( aCalcMode == ICarbonCalc::eReturnTotal ) {

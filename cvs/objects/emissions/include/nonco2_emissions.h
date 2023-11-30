@@ -92,15 +92,19 @@ public:
 	virtual void calcEmission( const std::string& aRegionName, 
                                const std::vector<IInput*>& aInputs,
                                const std::vector<IOutput*>& aOutputs,
-					           const GDP* aGDP,
 					           ICaptureComponent* aSequestrationDevice,
                                const int aPeriod );
+    
+    virtual void postCalc( const std::string& aRegionName,
+                           const bool aIsInitialTechYear,
+                           const std::vector<IInput*>& aInputs,
+                           const std::vector<IOutput*>& aOutputs,
+                           ICaptureComponent* aSequestrationDevice,
+                           const int aPeriod );
     
     virtual void doInterpolations( const int aYear, const int aPreviousYear,
                                    const int aNextYear, const AGHG* aPreviousGHG,
                                    const AGHG* aNextGHG );
-
-    double getAdjustedEmissCoef( const int aPeriod ) const;
     
 protected:
     NonCO2Emissions( const NonCO2Emissions& aOther );
@@ -114,7 +118,7 @@ protected:
         AGHG,
 
         //! The emissions coefficient.
-        DEFINE_VARIABLE( SIMPLE | STATE, "emiss-coef", mEmissionsCoef, Value ),
+        DEFINE_VARIABLE( SIMPLE, "emiss-coef", mEmissionsCoef, Value ),
 
         //! Emissions to calibrate to if provided.
         DEFINE_VARIABLE( SIMPLE, "input-emissions", mInputEmissions, Value ),
@@ -123,20 +127,8 @@ protected:
         DEFINE_VARIABLE( CONTAINER, "emissions-control", mEmissionsControls, std::vector<AEmissionsControl*> ),
         
         //! Emissions driver delegate
-        DEFINE_VARIABLE( CONTAINER, "emissions-driver", mEmissionsDriver, IEmissionsDriver* ),
-                                
-        //! Stored Emissions Coefficient (needed for some control technologies)
-        //! The emissions coefficient is the current ratio of emissions to driver, accounting for any controls   
-        DEFINE_VARIABLE( ARRAY | STATE | NOT_PARSABLE, "control-adjusted-emiss-coef", mAdjustedEmissCoef, objects::TechVintageVector<Value> )
+        DEFINE_VARIABLE( CONTAINER, "emissions-driver", mEmissionsDriver, IEmissionsDriver* )
     )
-
-    //! A flag to indicate if mInputEmissions should be used recalibrate mEmissionsCoef
-    //! in the current model period.
-    bool mShouldCalibrateEmissCoef;
-
-    //! A weark reference to the regional GDP object which needs to be stashed to be
-    //! able to calculate the emissions controls.
-    const GDP* mGDP;
 
     // typdef to help simplify code
     typedef std::vector<AEmissionsControl*>::const_iterator CControlIterator;

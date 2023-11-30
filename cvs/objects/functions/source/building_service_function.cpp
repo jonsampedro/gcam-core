@@ -60,7 +60,7 @@ double BuildingServiceFunction::calcCoefficient( InputSet& input, double consump
                             const std::string& sectorName, int period, double sigma, double IBT,
                             double capitalStock, const IInput* aParentInput ) const
 {
-     return 1;
+    return 1;
 }
 
 double BuildingServiceFunction::calcDemand( InputSet& input, double consumption, const std::string& regionName,
@@ -73,7 +73,7 @@ double BuildingServiceFunction::calcDemand( InputSet& input, double consumption,
     const double CVRT90 = 2.212; // 1975 $ to 1990 $
     const BuildingNodeInput* buildingParentInput = static_cast<const BuildingNodeInput*>( aParentInput );
     // income is 1990 thousand $ and service price is 1975 $
-    double income = buildingParentInput->getSubregionalIncome() * 1000 / CVRT90;
+    double income = buildingParentInput->getSubregionalIncome(regionName, period) * 1000 / CVRT90;
     const double floorSpace = buildingParentInput->getPhysicalDemand( period );
     const double internalGainsPerSqMeter = buildingParentInput->getInternalGains( regionName, period )
         / floorSpace;

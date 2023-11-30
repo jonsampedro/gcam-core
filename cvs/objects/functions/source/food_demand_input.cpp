@@ -124,7 +124,7 @@ void FoodDemandInput::initCalc( const string& aRegionName,
     // drivers when calculating demands. We will need to income to run the food demand
     // equations and the population to convert from per capita demands to total.
     mSubregionalPopulation[ aPeriod ] = aTechInfo->getDouble( "subregional-population", true );
-    mCurrentSubregionalIncome = aTechInfo->getDouble( "subregional-income-ppp", true );
+    mCurrentSubregionalIncomeShare = aTechInfo->getDouble( "subregional-income-share", true );
     
     if( aPeriod == ( scenario->getModeltime()->getFinalCalibrationPeriod() + 1 ) ) {        
         // Fill in regional bias values for future model periods which may just copy
@@ -163,7 +163,7 @@ void FoodDemandInput::toDebugXML( const int aPeriod, ostream& aOut, Tabs* aTabs 
     XMLWriteElement( mFoodDemandQuantity[ aPeriod ], "service", aOut, aTabs );
     XMLWriteElement( mFoodDemandQuantity[ aPeriod ] / getAnnualDemandConversionFactor( aPeriod ), "food-demand-percap", aOut, aTabs );
     XMLWriteElement( mSubregionalPopulation[ aPeriod ], "subregional-population", aOut, aTabs );
-    XMLWriteElement( mCurrentSubregionalIncome, "subregional-income-ppp", aOut, aTabs );
+    XMLWriteElement( mCurrentSubregionalIncomeShare, "subregional-income-share", aOut, aTabs );
     XMLWriteElement( mRegionalBias[ aPeriod ], "regional-bias", aOut, aTabs );
 
     // write the closing tag.
@@ -291,11 +291,13 @@ double FoodDemandInput::getAnnualDemandConversionFactor( const int aPeriod ) con
 /*!
  * \brief Get the currently set Subregional income.  Note that this
  *          is the PPP per capita income.
+ * \param aRegionName The current region name.
+ * \param aPeriod The current model period.
  * \return Subregional income that has been set from
  *           the consumer.
  */
-Value FoodDemandInput::getSubregionalIncome() const {
-    return mCurrentSubregionalIncome;
+double FoodDemandInput::getSubregionalIncome( const string& aRegionName, const int aPeriod ) const {
+    return mCurrentSubregionalIncomeShare * SectorUtils::getGDPPPP( aRegionName, aPeriod ) / mSubregionalPopulation[ aPeriod ];
 }
 
 /*!
@@ -499,12 +501,12 @@ double StaplesFoodDemandInput::calcIncomeTermDerivative( double aAdjIncome ) con
     double etas;
     
     if(aAdjIncome > x1) {
-        etas = mIncomeElasticity*(1-log(k*aAdjIncome)) / aAdjIncome;
+        etas = (1.0-log(k*aAdjIncome)) / aAdjIncome;
     }
     else {
-        etas = 1.0;
+        etas = (1.0-log(k*x1)) / x1;
     }
-    return etas;
+    return etas * mIncomeElasticity;
 }
 
 NonStaplesFoodDemandInput::NonStaplesFoodDemandInput()
@@ -632,15 +634,15 @@ double NonStaplesFoodDemandInput::calcIncomeTermDerivative( double aAdjIncome ) 
 
     if(fabs(delta) > 1.0e-3/mIncomeElasticity) {
         // lim_x->0 etan = 1
-        etan = aAdjIncome < 1.0e-4 ? 1 : 1/delta + aAdjIncome*log(aAdjIncome)/pow(delta, 2);
+        etan = aAdjIncome < 1.0e-4 ? 1.0 : 1.0/delta + aAdjIncome*log(aAdjIncome)/pow(delta, 2);
     }
     else {
         // Represent the income term derivative near x==1 as a Taylor series
-        etan = mIncomeElasticity * (0.5 +
+        etan = (0.5 +
                      1.0/6.0 * delta +
                      1.0/12.0 * pow(delta, 2) +
                      1.0/20.0 * pow(delta, 3));
     }
-    return etan;
+    return etan * mIncomeElasticity;
 }
 
