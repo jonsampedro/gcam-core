@@ -23,6 +23,7 @@ module_socio_L281.macro_account_tracking <- function(command, ...) {
   if(command == driver.DECLARE_INPUTS) {
     return(c(FILE = "common/GCAM_region_names",
              FILE = "energy/A54.sector",
+             FILE = "socioeconomics/income_shares",
              # Final energy tracking
              "L232.GlobalTechEff_ind",
              "L2321.GlobalTechCoef_cement",
@@ -61,6 +62,42 @@ module_socio_L281.macro_account_tracking <- function(command, ...) {
 
     GCAM_region_names <- get_data(all_data, "common/GCAM_region_names", strip_attributes = TRUE)
     A54.sector <- get_data(all_data, "energy/A54.sector", strip_attributes = TRUE)
+
+    income_shares<- get_data(all_data, "socioeconomics/income_shares")
+    income_groups <- unique(income_shares$category)
+
+    # Adjust A54.sector to multiple consumers
+
+    A54.sector <- A54.sector %>%
+      filter(grepl("pass", energy.final.demand) | grepl("aviation", energy.final.demand)) %>%
+      repeat_add_columns(tibble(group = income_groups)) %>%
+      mutate(energy.final.demand = paste0(energy.final.demand, "_", group),
+             supplysector = paste0(supplysector, "_", group)) %>%
+      select(-group) %>%
+      bind_rows(
+        A54.sector %>%
+          filter(grepl("freight", energy.final.demand) | grepl("ship", energy.final.demand))
+      )
+
+
+    # Adjust final demand sectors to multiple consumers:
+    socioeconomics.FINAL_DEMAND_SECTORS_adj_df <- tibble(supplysector = socioeconomics.FINAL_DEMAND_SECTORS) %>%
+      filter(grepl("pass", supplysector) | grepl("aviation", supplysector) | grepl("resid cooling", supplysector) | grepl("resid heating", supplysector) | grepl("resid others", supplysector)) %>%
+      repeat_add_columns(tibble(group = income_groups)) %>%
+      mutate(supplysector = paste0(supplysector, "_", group)) %>%
+      select(-group) %>%
+      bind_rows(
+        tibble(supplysector = socioeconomics.FINAL_DEMAND_SECTORS)  %>%
+          filter(!grepl("pass", supplysector),
+                 !grepl("aviation", supplysector),
+                 !grepl("resid cooling", supplysector),
+                 !grepl("resid heating", supplysector),
+                 !grepl("resid others", supplysector))
+      )
+
+    socioeconomics.FINAL_DEMAND_SECTORS_adj <- unique(socioeconomics.FINAL_DEMAND_SECTORS_adj_df$supplysector)
+
+
 
     all_fd_globaltech_names <- c("L232.GlobalTechEff_ind",
                                  "L2321.GlobalTechCoef_cement",
@@ -120,7 +157,7 @@ module_socio_L281.macro_account_tracking <- function(command, ...) {
           distinct()
       }) %>%
       bind_rows() %>%
-      filter(sector.name %in% socioeconomics.FINAL_DEMAND_SECTORS) ->
+      filter(sector.name %in% socioeconomics.FINAL_DEMAND_SECTORS_adj) ->
       fd_global_tech_input_all
 
     fd_global_tech_input_all %>%
@@ -225,7 +262,7 @@ module_socio_L281.macro_account_tracking <- function(command, ...) {
       add_units("NA") %>%
       add_comments("Sets up a sector mapping to make sure we calculate the base price") %>%
       add_comments("of the correct sector when pass-through sectors are involved") %>%
-      add_precursors("energy/A54.sector") ->
+      add_precursors("energy/A54.sector", "socioeconomics/income_shares") ->
       L281.BasePriceSectorMapping
 
     fd_accounting %>%
