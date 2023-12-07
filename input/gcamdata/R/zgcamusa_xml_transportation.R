@@ -98,7 +98,7 @@ module_gcamusa_transportation_xml <- function(command, ...) {
     # Produce outputs
     create_xml(xml_name) %>%
       add_xml_data(L254.DeleteSupplysector_USAtrn, "DeleteSupplysector") %>%
-      add_xml_data(L254.DeleteFinalDemand_USAtrn, "DeleteFinalDemand") %>%
+      add_xml_data(L254.DeleteFinalDemand_USAtrn, "DeleteFinalDemand_trn") %>%
       add_logit_tables_xml(L254.Supplysector_trn_USA, "Supplysector") %>%
       add_xml_data(L254.FinalEnergyKeyword_trn_USA, "FinalEnergyKeyword") %>%
       add_logit_tables_xml(L254.tranSubsectorLogit_USA, "tranSubsectorLogit", "tranSubsector") %>%
@@ -116,13 +116,13 @@ module_gcamusa_transportation_xml <- function(command, ...) {
       add_xml_data(L254.StubTranTechLoadFactor_USA, "StubTranTechLoadFactor") %>%
       add_xml_data(L254.StubTranTechCost_USA, "StubTranTechCost") %>%
       add_xml_data(L254.StubTranTechCoef_USA, "StubTranTechCoef") %>%
-      add_xml_data(L254.PerCapitaBased_USA, "PerCapitaBased") %>%
-      add_xml_data(L254.PriceElasticity_USA, "PriceElasticity") %>%
-      add_xml_data(L254.IncomeElasticity_USA, "IncomeElasticity") %>%
+      add_xml_data(L254.PerCapitaBased_USA, "PerCapitaBased_trn") %>%
+      add_xml_data(L254.PriceElasticity_USA, "PriceElasticity_trn") %>%
+      add_xml_data(L254.IncomeElasticity_USA, "IncomeElasticity_trn") %>%
       add_xml_data(L254.StubTranTechCalInput_USA, "StubTranTechCalInput") %>%
       add_xml_data(L254.StubTranTechProd_nonmotor_USA, "StubTranTechProd") %>%
       add_xml_data(L254.StubTranTechCalInput_passthru_USA, "StubTranTechCalInput") %>%
-      add_xml_data(L254.BaseService_USA, "BaseService") %>%
+      add_xml_data(L254.BaseService_USA, "BaseService_trn") %>%
       add_precursors("L254.DeleteSupplysector_USAtrn",
                      "L254.DeleteFinalDemand_USAtrn",
                      "L254.Supplysector_trn_USA",
@@ -145,10 +145,10 @@ module_gcamusa_transportation_xml <- function(command, ...) {
                      "L254.PerCapitaBased_USA",
                      "L254.PriceElasticity_USA",
                      "L254.IncomeElasticity_USA",
+                     "L254.BaseService_USA",
                      "L254.StubTranTechCalInput_USA",
                      "L254.StubTranTechProd_nonmotor_USA",
-                     "L254.StubTranTechCalInput_passthru_USA",
-                     "L254.BaseService_USA") %>%
+                     "L254.StubTranTechCalInput_passthru_USA") %>%
                       assign(xml_name, ., envir = curr_env)
     ret_data <- c(ret_data, xml_name)
 

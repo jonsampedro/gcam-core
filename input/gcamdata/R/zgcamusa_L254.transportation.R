@@ -208,12 +208,12 @@ module_gcamusa_L254.transportation <- function(command, ...) {
 
     }
 
-    remove.mult.groups.efd <- function(df){
+    remove.mult.groups.tfd <- function(df){
 
       df <- df %>%
-        mutate(energy.final.demand = gsub("d10", "dx", energy.final.demand)) %>%
-        mutate(agg.supplysector = if_else(grepl("pass", energy.final.demand) | grepl("aviation", energy.final.demand), gsub('.{3}$', '', energy.final.demand), energy.final.demand)) %>%
-        mutate(energy.final.demand = agg.supplysector) %>%
+        mutate(trn.final.demand = gsub("d10", "dx", trn.final.demand)) %>%
+        mutate(agg.supplysector = if_else(grepl("pass", trn.final.demand) | grepl("aviation", trn.final.demand), gsub('.{3}$', '', trn.final.demand), trn.final.demand)) %>%
+        mutate(trn.final.demand = agg.supplysector) %>%
         select(-agg.supplysector) %>%
         distinct()
 
@@ -221,9 +221,9 @@ module_gcamusa_L254.transportation <- function(command, ...) {
 
     }
 
-    L254.PerCapitaBased<- remove.mult.groups.efd(L254.PerCapitaBased)
-    L254.PriceElasticity <- remove.mult.groups.efd(L254.PriceElasticity)
-    L254.IncomeElasticity <- remove.mult.groups.efd(L254.IncomeElasticity)
+    L254.PerCapitaBased<- remove.mult.groups.tfd(L254.PerCapitaBased)
+    L254.PriceElasticity <- remove.mult.groups.tfd(L254.PriceElasticity)
+    L254.IncomeElasticity <- remove.mult.groups.tfd(L254.IncomeElasticity)
 
 
 
@@ -240,7 +240,7 @@ module_gcamusa_L254.transportation <- function(command, ...) {
     get_data(all_data, "L254.PerCapitaBased",strip_attributes = TRUE)%>% filter(sce %in% c("CORE")) %>%
       mutate(region = region) %>% # strip off attributes like title, etc.
       filter(region == gcam.USA_REGION) %>%
-      select(region, energy.final.demand, sce) ->
+      select(region, trn.final.demand, sce) ->
       L254.DeleteFinalDemand_USAtrn
 
 
@@ -426,7 +426,8 @@ module_gcamusa_L254.transportation <- function(command, ...) {
       filter(!is.na(energy.final.demand)) %>%
       group_by(region, energy.final.demand, year) %>%
       summarise(base.service = sum(base.service)) %>%
-      ungroup()
+      ungroup() %>%
+      rename(trn.final.demand = energy.final.demand)
 
 
     # Produce outputs

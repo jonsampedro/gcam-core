@@ -215,7 +215,8 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
       mutate(group = gsub("resid_", "", gcam.consumer)) %>%
       select(-gcam.consumer) %>%
       repeat_add_columns(tibble(unique(subset(A54.demand, perCapitaBased == 1, select = energy.final.demand)))) %>%
-      unite(energy.final.demand, c("energy.final.demand", "group"), sep = "_")
+      unite(energy.final.demand, c("energy.final.demand", "group"), sep = "_") %>%
+      rename(trn.final.demand = energy.final.demand)
 
 
     # ===================================================
@@ -276,6 +277,7 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
       rename(basePrice = value) %>%
       # filter final calibration year
       filter(year == MODEL_FINAL_BASE_YEAR) %>%
+      rename(trn.final.demand = energy.final.demand) %>%
       select(LEVEL2_DATA_NAMES[["CalPrice_trn"]])
 
 
@@ -1118,7 +1120,8 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
 
     # L254.PerCapitaBase: per-capita based flag for transportation final demand
     A54.demand %>%
-      write_to_all_regions(c(LEVEL2_DATA_NAMES[["PerCapitaBased"]],"sce"), GCAM_region_names = GCAM_region_names) %>% na.omit() ->
+      write_to_all_regions(c(LEVEL2_DATA_NAMES[["PerCapitaBased"]],"sce"), GCAM_region_names = GCAM_region_names) %>% na.omit() %>%
+      rename(trn.final.demand = energy.final.demand) ->
       L254.PerCapitaBased # OUTPUT
 
 
@@ -1126,14 +1129,16 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
     # Price elasticities are only applied to future periods. Application in base years will cause solution failure
     A54.demand %>%
       repeat_add_columns(tibble(year = MODEL_FUTURE_YEARS)) %>%
-      write_to_all_regions(c(LEVEL2_DATA_NAMES[["PriceElasticity"]],"sce"), GCAM_region_names = GCAM_region_names) %>% na.omit() ->
+      write_to_all_regions(c(LEVEL2_DATA_NAMES[["PriceElasticity"]],"sce"), GCAM_region_names = GCAM_region_names) %>% na.omit() %>%
+      rename(trn.final.demand = energy.final.demand) ->
       L254.PriceElasticity # OUTPUT
 
     # L254.IncomeElasticity: Income elasticity of transportation final demand
     # Income elasticities are only applied to future periods
     A54.demand %>%
       repeat_add_columns(tibble(year = MODEL_FUTURE_YEARS)) %>%
-      write_to_all_regions(c(LEVEL2_DATA_NAMES[["IncomeElasticity"]],"sce"), GCAM_region_names = GCAM_region_names) %>% na.omit() ->
+      write_to_all_regions(c(LEVEL2_DATA_NAMES[["IncomeElasticity"]],"sce"), GCAM_region_names = GCAM_region_names) %>% na.omit() %>%
+      rename(trn.final.demand = energy.final.demand) ->
       L254.IncomeElasticity # OUTPUT
 
     # L254.BaseService: Base-year service output of transportation final demand
@@ -1150,7 +1155,8 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
       group_by(region, energy.final.demand, year,sce) %>%
       summarise(base.service = sum(base.service)) %>%
       ungroup() %>%
-      filter(sce=="CORE")
+      filter(sce=="CORE") %>%
+      rename(trn.final.demand = energy.final.demand)
       #kbn 2020-06-02 Base service values only needed for CORE.
        # OUTPUT
 
@@ -1164,19 +1170,19 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
 
     # We need to prepare the dataframe for the estimation of the a parameter
      trn_data <- L254.BaseService %>%
-      filter(grepl("pass", energy.final.demand) | grepl("aviation", energy.final.demand)) %>%
-      mutate(energy.final.demand = sub("_([^_]*)$", "_split_\\1", energy.final.demand)) %>%
-      tidyr::separate(energy.final.demand, into = c("energy.final.demand", "group"), sep = "_split_", extra = "merge", fill = "right") %>%
+      filter(grepl("pass", trn.final.demand) | grepl("aviation", trn.final.demand)) %>%
+      mutate(trn.final.demand = sub("_([^_]*)$", "_split_\\1", trn.final.demand)) %>%
+      tidyr::separate(trn.final.demand, into = c("trn.final.demand", "group"), sep = "_split_", extra = "merge", fill = "right") %>%
       left_join_error_no_match(GCAM_region_names, by = "region") %>%
       left_join_error_no_match(L102.pcgdp_thous90USD_Scen_R_Y_gr %>% filter(scenario == socioeconomics.BASE_GDP_SCENARIO),
                                by = c("GCAM_region_ID", "region", "year", "group")) %>%
       # Add prices
       left_join(A54.CalPrice_trn %>%
                                  gather_years() %>%
-                                 rename(energy.final.demand = sector),
-                                by = c("region", "energy.final.demand", "year")) %>%
+                                 rename(trn.final.demand = sector),
+                                by = c("region", "trn.final.demand", "year")) %>%
       rename(price = value) %>%
-      group_by(scenario, region, GCAM_region_ID, energy.final.demand, group) %>%
+      group_by(scenario, region, GCAM_region_ID, trn.final.demand, group) %>%
       # extrapolate 1975 prices
       mutate(price = if_else(is.na(price), approx_fun(year, price, rule = 2), price)) %>%
       ungroup() %>%
@@ -1184,18 +1190,19 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
       left_join_error_no_match(L254.PriceElasticity %>%
                                  select(-year) %>%
                                  distinct() %>%
-                                 mutate(energy.final.demand = sub("_([^_]*)$", "_split_\\1", energy.final.demand)) %>%
-                                 tidyr::separate(energy.final.demand, into = c("energy.final.demand", "group"), sep = "_split_", extra = "merge", fill = "right"),
-                               by = c("region", "energy.final.demand", "group", "sce")) %>%
+                                 mutate(trn.final.demand = sub("_([^_]*)$", "_split_\\1", trn.final.demand)) %>%
+                                 tidyr::separate(trn.final.demand, into = c("trn.final.demand", "group"), sep = "_split_", extra = "merge", fill = "right"),
+                               by = c("region", "trn.final.demand", "group", "sce")) %>%
       # add pop
       left_join_error_no_match(L101.Pop_thous_R_Yh, by = c("year", "GCAM_region_ID")) %>%
       rename(pop = value) %>%
       mutate(pop = pop * 1E3 * (1 / length(income_groups))) %>%
       # calculate lag prices
-      group_by(scenario, region, GCAM_region_ID, energy.final.demand, group) %>%
+      group_by(scenario, region, GCAM_region_ID, trn.final.demand, group) %>%
       mutate(lag_price = lag(price)) %>%
       mutate(lag_price = if_else(is.na(lag_price), approx_fun(year, lag_price, rule = 2), lag_price)) %>%
-      ungroup()
+      ungroup() %>%
+      rename(energy.final.demand = trn.final.demand)
 
     #-----------------------------------------
 
@@ -1221,6 +1228,7 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
     # Get the coefficients to write them to the xml and be read by the trn-function:
     L254.demandFn_trn_coef <- trn_data_fin %>%
       unite(energy.final.demand, c("energy.final.demand", "group"), sep = "_") %>%
+      rename(trn.final.demand = energy.final.demand) %>%
       select(LEVEL2_DATA_NAMES[["DemandFunction_trn_coef"]]) %>%
       distinct()
 
