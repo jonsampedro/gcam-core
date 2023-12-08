@@ -124,7 +124,6 @@ void TrnFinalDemand::completeInit( const string& aRegionName,
     
 
 void TrnFinalDemand::initCalc( const string& aRegionName,
-                                  const GDP* aGDP,
                                   const Demographic* aDemographics,
                                   const int aPeriod )
 {
@@ -147,7 +146,6 @@ double TrnFinalDemand::getPricePaid(const string& aRegionName, const int aPeriod
 *  be calculated and used without being adding to marketplace.
 * \author Sonny Kim, Josh Lurz, Jon Sampedro
 * \param string& aRegionName region name.
-* \param GDP* aGDP object.
 * \param Demographic* aDemographicss.
 * \param aPeriod Model aPeriod
 * 
@@ -160,7 +158,6 @@ double TrnFinalDemand::getPricePaid(const string& aRegionName, const int aPeriod
 */
 void TrnFinalDemand::setFinalDemand( const string& aRegionName,
                                         const Demographic* aDemographics,
-                                        const GDP* aGDP,
                                         const int aPeriod )
 {
 

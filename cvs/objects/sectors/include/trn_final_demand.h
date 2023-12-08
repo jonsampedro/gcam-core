@@ -50,7 +50,6 @@
 #include "sectors/include/energy_final_demand.h"
 
 // Forward declarations
-class GDP;
 class Demographic;
 
 /*! 
@@ -85,13 +84,11 @@ public:
         const IInfo* aRegionInfo);
 
     virtual void initCalc(const std::string& aRegionName,
-        const GDP* aGDP,
         const Demographic* aDemographics,
         const int aPeriod);
 
     virtual void setFinalDemand(const std::string& aRegionName,
         const Demographic* aDemographics,
-        const GDP* aGDP,
         const int aPeriod);
 
 
