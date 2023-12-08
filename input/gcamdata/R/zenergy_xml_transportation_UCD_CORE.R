@@ -45,10 +45,14 @@ module_energy_transportation_UCD_CORE_xml <- function(command, ...) {
              "L254.StubTechCalInput_passthru",
              "L254.StubTechProd_nonmotor",
              "L244.SubregionalShares_trn",
-             "L254.PerCapitaBased",
-             "L254.BaseService",
-             "L254.PriceElasticity",
-             "L254.IncomeElasticity",
+             "L254.PerCapitaBased_pass",
+             "L254.PerCapitaBased_fr",
+             "L254.BaseService_pass",
+             "L254.BaseService_fr",
+             "L254.PriceElasticity_pass",
+             "L254.PriceElasticity_fr",
+             "L254.IncomeElasticity_pass",
+             "L254.IncomeElasticity_fr",
              "L254.demandFn_trn_coef",
              "L254.CalPrice_trn"))
   } else if(command == driver.DECLARE_OUTPUTS) {
@@ -97,10 +101,14 @@ module_energy_transportation_UCD_CORE_xml <- function(command, ...) {
     L254.StubTranTechCoef <- get_data(all_data, "L254.StubTranTechCoef")
     L254.StubTechCalInput_passthru <- get_data(all_data, "L254.StubTechCalInput_passthru")
     L254.StubTechProd_nonmotor <- get_data(all_data, "L254.StubTechProd_nonmotor")
-    L254.PerCapitaBased <- get_data(all_data, "L254.PerCapitaBased")
-    L254.PriceElasticity <- get_data(all_data, "L254.PriceElasticity")
-    L254.IncomeElasticity <- get_data(all_data, "L254.IncomeElasticity")
-    L254.BaseService <- get_data(all_data, "L254.BaseService")
+    L254.PerCapitaBased_pass <- get_data(all_data, "L254.PerCapitaBased_pass")
+    L254.PerCapitaBased_fr <- get_data(all_data, "L254.PerCapitaBased_fr")
+    L254.PriceElasticity_pass <- get_data(all_data, "L254.PriceElasticity_pass")
+    L254.PriceElasticity_fr <- get_data(all_data, "L254.PriceElasticity_fr")
+    L254.IncomeElasticity_pass <- get_data(all_data, "L254.IncomeElasticity_pass")
+    L254.IncomeElasticity_fr <- get_data(all_data, "L254.IncomeElasticity_fr")
+    L254.BaseService_pass <- get_data(all_data, "L254.BaseService_pass")
+    L254.BaseService_fr <- get_data(all_data, "L254.BaseService_fr")
 
     L244.SubregionalShares_trn <- get_data(all_data, "L244.SubregionalShares_trn")
     L254.demandFn_trn_coef <- get_data(all_data, "L254.demandFn_trn_coef")
@@ -133,16 +141,22 @@ module_energy_transportation_UCD_CORE_xml <- function(command, ...) {
       L254.tranSubsectorSpeed_passthru_SSP <- L254.tranSubsectorSpeed_passthru %>% filter(sce==i)
       L254.tranSubsectorVOTT_SSP<- L254.tranSubsectorVOTT %>% filter(sce==i)
       L254.tranSubsectorFuelPref_SSP<-L254.tranSubsectorFuelPref %>% filter(sce==i)
-      L254.PerCapitaBased_SSP<- L254.PerCapitaBased %>% filter(sce==i)
-      L254.PriceElasticity_SSP <- L254.PriceElasticity %>%  filter(sce==i)
-      L254.IncomeElasticity_SSP <- L254.IncomeElasticity %>% filter(sce==i)
+      L254.PerCapitaBased_pass_SSP<- L254.PerCapitaBased_pass %>% filter(sce==i)
+      L254.PerCapitaBased_fr_SSP<- L254.PerCapitaBased_fr %>% filter(sce==i)
+      L254.PriceElasticity_pass_SSP <- L254.PriceElasticity_pass %>%  filter(sce==i)
+      L254.PriceElasticity_fr_SSP <- L254.PriceElasticity_fr %>%  filter(sce==i)
+      L254.IncomeElasticity_pass_SSP <- L254.IncomeElasticity_pass %>% filter(sce==i)
+      L254.IncomeElasticity_fr_SSP <- L254.IncomeElasticity_fr %>% filter(sce==i)
       }else{
         L254.tranSubsectorSpeed_passthru_SSP <- L254.tranSubsectorSpeed_passthru %>% filter(sce=="CORE")
         L254.tranSubsectorVOTT_SSP<- L254.tranSubsectorVOTT %>% filter(sce=="CORE")
         L254.tranSubsectorFuelPref_SSP<-L254.tranSubsectorFuelPref %>% filter(sce=="CORE")
-        L254.PerCapitaBased_SSP <- L254.PerCapitaBased %>% filter(sce=="CORE")
-        L254.PriceElasticity_SSP <- L254.PriceElasticity %>% filter(sce=="CORE")
-        L254.IncomeElasticity_SSP <- L254.IncomeElasticity %>% filter(sce=="CORE")
+        L254.PerCapitaBased_pass_SSP <- L254.PerCapitaBased_pass %>% filter(sce=="CORE")
+        L254.PerCapitaBased_fr_SSP <- L254.PerCapitaBased_fr %>% filter(sce=="CORE")
+        L254.PriceElasticity_pass_SSP <- L254.PriceElasticity_pass %>% filter(sce=="CORE")
+        L254.PriceElasticity_fr_SSP <- L254.PriceElasticity_fr %>% filter(sce=="CORE")
+        L254.IncomeElasticity_pass_SSP <- L254.IncomeElasticity_pass %>% filter(sce=="CORE")
+        L254.IncomeElasticity_fr_SSP <- L254.IncomeElasticity_fr %>% filter(sce=="CORE")
       }
 
 
@@ -179,17 +193,22 @@ module_energy_transportation_UCD_CORE_xml <- function(command, ...) {
       L254.GlobalTranTechShrwt_SSP <- L254.GlobalTranTechShrwt %>%  filter(sce==i)
       if (i != "CORE"){L254.StubTranTechCalInput_SSP<-L254.StubTranTechCalInput %>%  filter(sce== i) %>% filter(year>MODEL_FINAL_BASE_YEAR)}
 
-      L254.BaseService_SSP <- L254.BaseService %>% filter(sce =="CORE")
+      L254.BaseService_pass_SSP <- L254.BaseService_pass %>% filter(sce =="CORE")
+      L254.BaseService_fr_SSP <- L254.BaseService_fr %>% filter(sce =="CORE")
 
 
       #Create xmls
       create_xml(xml_name) %>%
         add_xml_data(L254.demandFn_trn_coef, "DemandFunction_trn_coef") %>%
         add_xml_data(L254.CalPrice_trn, "CalPrice_trn") %>%
-        add_xml_data(L254.PerCapitaBased_SSP, "PerCapitaBased_trn") %>%
-        add_xml_data(L254.PriceElasticity_SSP, "PriceElasticity_trn") %>%
-        add_xml_data(L254.IncomeElasticity_SSP, "IncomeElasticity_trn") %>%
-        add_xml_data(L254.BaseService_SSP, "BaseService_trn") %>%
+        add_xml_data(L254.PerCapitaBased_pass_SSP, "PerCapitaBased_trn") %>%
+        add_xml_data(L254.PerCapitaBased_fr_SSP, "PerCapitaBased") %>%
+        add_xml_data(L254.PriceElasticity_pass_SSP, "PriceElasticity_trn") %>%
+        add_xml_data(L254.PriceElasticity_fr_SSP, "PriceElasticity") %>%
+        add_xml_data(L254.IncomeElasticity_pass_SSP, "IncomeElasticity_trn") %>%
+        add_xml_data(L254.IncomeElasticity_fr_SSP, "IncomeElasticity") %>%
+        add_xml_data(L254.BaseService_pass_SSP, "BaseService_trn") %>%
+        add_xml_data(L254.BaseService_fr_SSP, "BaseService") %>%
         add_xml_data(L244.SubregionalShares_trn, "SubregionalShares_trn") %>%
         add_logit_tables_xml(L254.Supplysector_trn_SSP, "Supplysector") %>%
         add_xml_data(L254.FinalEnergyKeyword_trn_SSP, "FinalEnergyKeyword") %>%
@@ -250,10 +269,14 @@ module_energy_transportation_UCD_CORE_xml <- function(command, ...) {
                        "L254.StubTranTechCoef",
                        "L254.StubTechCalInput_passthru",
                        "L254.StubTechProd_nonmotor",
-                       "L254.PerCapitaBased",
-                       "L254.PriceElasticity",
-                       "L254.IncomeElasticity",
-                       "L254.BaseService",
+                       "L254.PerCapitaBased_pass",
+                       "L254.PerCapitaBased_fr",
+                       "L254.PriceElasticity_pass",
+                       "L254.PriceElasticity_fr",
+                       "L254.IncomeElasticity_pass",
+                       "L254.IncomeElasticity_fr",
+                       "L254.BaseService_pass",
+                       "L254.BaseService_fr",
                        "L254.demandFn_trn_coef",
                        "L244.SubregionalShares_trn",
                        "L254.CalPrice_trn")  %>%
