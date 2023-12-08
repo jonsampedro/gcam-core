@@ -101,7 +101,7 @@ void TrnFinalDemand::toDebugXML( const int aPeriod,
     XMLWriteOpeningTag ( getXMLName(), aOut, aTabs, mName );
 
     // write the xml for the class members.
-    XMLWriteElement( mBaseService[ aPeriod ], "base-service", aOut, aTabs );
+    XMLWriteElement(mBaseService[ aPeriod ], "base-service", aOut, aTabs );
     XMLWriteElement(mTrnCoef, "coef_trn", aOut, aTabs );
     XMLWriteElement(mBasePriceTrn, "basePrice", aOut, aTabs);
     XMLWriteElement(mSubregIncomeShare[ aPeriod ], "subregional-income-share", aOut, aTabs );
@@ -156,16 +156,35 @@ double TrnFinalDemand::getPricePaid(const string& aRegionName, const int aPeriod
  *       
 *       trnDemand = trnCoef * subregionalIncome(^IncElast?) * price(^Prelast?) * subregionalPopulation;
 */
-void TrnFinalDemand::setFinalDemand( const string& aRegionName,
-                                        const Demographic* aDemographics,
-                                        const int aPeriod )
-{
 
-      
+
+void TrnFinalDemand::setFinalDemand(const string& aRegionName,
+    const Demographic* aDemographics,
+    const int aPeriod)
+{
+    calcFinalDemand(aRegionName, aDemographics, aPeriod);
+    // Set the service demand into the marketplace.
+    Marketplace* marketplace = scenario->getMarketplace();
+    marketplace->addToDemand(mName, aRegionName, mServiceDemands[aPeriod], aPeriod);
+}
+
+
+
+double TrnFinalDemand::calcFinalDemand(const string& aRegionName,
+    const Demographic* aDemographics,
+    const int aPeriod)
+{
+    if (aPeriod <= scenario->getModeltime()->getFinalCalibrationPeriod()) {
+        // read-in initial demand 
+        mServiceDemands[aPeriod] = mBaseService[aPeriod];
+    }
+
+    else {
+
     // unit conversions to convert from thous ppl to ppl
     const double CONV_POP_THOUS = 1e3;
 
-    
+
     // Subregional population
     double subregionalPopulation = aDemographics->getTotal(aPeriod) * mSubregPopShare[aPeriod] * CONV_POP_THOUS;
 
@@ -181,10 +200,10 @@ void TrnFinalDemand::setFinalDemand( const string& aRegionName,
     // Function
     mServiceDemands[aPeriod] = mTrnCoef * subregionalIncome * price * subregionalPopulation;
 
+    }
 
-    // Set the service demand into the marketplace.
-    Marketplace* marketplace = scenario->getMarketplace();
-    marketplace->addToDemand( mName, aRegionName, mServiceDemands[ aPeriod ], aPeriod );
+    return mServiceDemands[aPeriod];
+
 }
 
 

@@ -91,6 +91,9 @@ public:
         const Demographic* aDemographics,
         const int aPeriod);
 
+    virtual double calcFinalDemand(const std::string& aRegionName,
+        const Demographic* aDemographics,
+        const int aPeriod);
 
     virtual void accept(IVisitor* aVisitor, const int aPeriod) const;
 
@@ -112,9 +115,6 @@ protected:
     DEFINE_DATA_WITH_PARENT(
         EnergyFinalDemand,
 
-        //! Name of the final demand and the good it consumes.
-        DEFINE_VARIABLE(SIMPLE, "name", mName, std::string),
-
         //! Coefficient to estimate pass_km demand                      
         DEFINE_VARIABLE(SIMPLE, "coef_trn", mTrnCoef, Value),
 
@@ -125,10 +125,7 @@ protected:
         DEFINE_VARIABLE(ARRAY, "subregional-income-share", mSubregIncomeShare, objects::PeriodVector<Value>),
 
         //! Population share
-        DEFINE_VARIABLE(ARRAY, "subregional-population-share", mSubregPopShare, objects::PeriodVector<Value>),
-
-        //! Per capita service for each period to which to calibrate.
-        DEFINE_VARIABLE(ARRAY, "base-service", mBaseService, objects::PeriodVector<Value>)
+        DEFINE_VARIABLE(ARRAY, "subregional-population-share", mSubregPopShare, objects::PeriodVector<Value>)
 
     )
 
