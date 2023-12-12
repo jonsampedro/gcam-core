@@ -106,6 +106,10 @@ void TrnFinalDemand::toDebugXML( const int aPeriod,
     XMLWriteElement(mBasePriceTrn, "basePrice", aOut, aTabs);
     XMLWriteElement(mSubregIncomeShare[ aPeriod ], "subregional-income-share", aOut, aTabs );
     XMLWriteElement(mSubregPopShare[ aPeriod ], "subregional-population-share", aOut, aTabs );
+    XMLWriteElement(mSubregionalPopulation[aPeriod], "subregional-population", aOut, aTabs);
+    XMLWriteElement(mSubregionalIncome[aPeriod], "subregional-income", aOut, aTabs);
+  //  XMLWriteElement(mSubRgPop[aPeriod], "subregional-population", aOut, aTabs);
+    XMLWriteElement(mServiceDemands[aPeriod], "service", aOut, aTabs);
 
     toDebugXMLDerived( aPeriod, aOut, aTabs );
     XMLWriteClosingTag( getXMLName(), aOut, aTabs );
@@ -168,7 +172,14 @@ void TrnFinalDemand::setFinalDemand(const string& aRegionName,
     marketplace->addToDemand(mName, aRegionName, mServiceDemands[aPeriod], aPeriod);
 }
 
-
+//double TrnFinalDemand::trnSubregPop(const string& aRegionName,
+//    const Demographic* aDemographics,
+  //  const int aPeriod)
+//{
+ //   mSubRgPop[aPeriod] = aDemographics->getTotal(aPeriod) * mSubregPopShare[aPeriod];
+//
+ //   return mSubRgPop[aPeriod];
+//}
 
 double TrnFinalDemand::calcFinalDemand(const string& aRegionName,
     const Demographic* aDemographics,
@@ -182,16 +193,22 @@ double TrnFinalDemand::calcFinalDemand(const string& aRegionName,
     else {
 
     // unit conversions to convert from thous ppl to ppl
-    const double CONV_POP_THOUS = 1e3;
+    
+        const double CONV_THOUS = 1e3;
 
 
-    // Subregional population
-    double subregionalPopulation = aDemographics->getTotal(aPeriod) * mSubregPopShare[aPeriod] * CONV_POP_THOUS;
+        double population = aDemographics->getTotal(aPeriod);
+        double gdp = SectorUtils::getGDP(aRegionName, aPeriod);
 
-    // Subregional income 
-    double subregionalIncome = (SectorUtils::getGDPPPP(aRegionName, aPeriod) * mSubregIncomeShare[aPeriod]) / subregionalPopulation;
+        double subregionalPopulation = mSubregPopShare[aPeriod] * population * CONV_THOUS;
+        double subregionalIncome = mSubregIncomeShare[aPeriod] * gdp * CONV_THOUS / subregionalPopulation;
 
-    // Price
+        // Save as an object for debugging
+        mSubregionalPopulation[aPeriod] = subregionalPopulation;
+        mSubregionalIncome[aPeriod] = subregionalIncome;
+
+
+        // Price
     const double PriceAdjustParam = mBasePriceTrn - getPricePaid(aRegionName, scenario->getModeltime()->getFinalCalibrationPeriod());
     double price_adj = getPricePaid(aRegionName, aPeriod);
     double price = price_adj + PriceAdjustParam;

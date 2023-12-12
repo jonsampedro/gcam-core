@@ -87,6 +87,10 @@ public:
         const Demographic* aDemographics,
         const int aPeriod);
 
+    //virtual double trnSubregPop(const string& aRegionName,
+     //   const Demographic* aDemographics,
+      //  const int aPeriod);
+
     virtual void setFinalDemand(const std::string& aRegionName,
         const Demographic* aDemographics,
         const int aPeriod);
@@ -120,6 +124,12 @@ protected:
 
         //! Coefficient to adjust trn prices                       
         DEFINE_VARIABLE(SIMPLE, "basePrice", mBasePriceTrn, Value),
+
+        //! Total end-use sector service after technical change is applied.
+       DEFINE_VARIABLE(ARRAY | STATE | NOT_PARSABLE, "subregional-population", mSubregionalPopulation, objects::PeriodVector<Value>),
+
+        //! Total end-use sector service after technical change is applied.
+        DEFINE_VARIABLE(ARRAY | STATE | NOT_PARSABLE, "subregional-income", mSubregionalIncome, objects::PeriodVector<Value>),
 
         //! Income share 
         DEFINE_VARIABLE(ARRAY, "subregional-income-share", mSubregIncomeShare, objects::PeriodVector<Value>),
