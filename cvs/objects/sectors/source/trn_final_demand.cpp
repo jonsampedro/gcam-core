@@ -108,7 +108,8 @@ void TrnFinalDemand::toDebugXML( const int aPeriod,
     XMLWriteElement(mSubregPopShare[ aPeriod ], "subregional-population-share", aOut, aTabs );
     XMLWriteElement(mSubregionalPopulation[aPeriod], "subregional-population", aOut, aTabs);
     XMLWriteElement(mSubregionalIncome[aPeriod], "subregional-income", aOut, aTabs);
-  //  XMLWriteElement(mSubRgPop[aPeriod], "subregional-population", aOut, aTabs);
+    XMLWriteElement(mBiasAdderTrn[aPeriod], "bias-adder", aOut, aTabs);
+    
     XMLWriteElement(mServiceDemands[aPeriod], "service", aOut, aTabs);
 
     toDebugXMLDerived( aPeriod, aOut, aTabs );
@@ -172,14 +173,6 @@ void TrnFinalDemand::setFinalDemand(const string& aRegionName,
     marketplace->addToDemand(mName, aRegionName, mServiceDemands[aPeriod], aPeriod);
 }
 
-//double TrnFinalDemand::trnSubregPop(const string& aRegionName,
-//    const Demographic* aDemographics,
-  //  const int aPeriod)
-//{
- //   mSubRgPop[aPeriod] = aDemographics->getTotal(aPeriod) * mSubregPopShare[aPeriod];
-//
- //   return mSubRgPop[aPeriod];
-//}
 
 double TrnFinalDemand::calcFinalDemand(const string& aRegionName,
     const Demographic* aDemographics,
@@ -195,17 +188,14 @@ double TrnFinalDemand::calcFinalDemand(const string& aRegionName,
     // unit conversions to convert from thous ppl to ppl
     
         const double CONV_THOUS = 1e3;
+        const double CVRT90 = 2.212;
 
 
         double population = aDemographics->getTotal(aPeriod);
         double gdp = SectorUtils::getGDP(aRegionName, aPeriod);
 
         double subregionalPopulation = mSubregPopShare[aPeriod] * population * CONV_THOUS;
-        double subregionalIncome = mSubregIncomeShare[aPeriod] * gdp * CONV_THOUS / subregionalPopulation;
-
-        // Save as an object for debugging
-        mSubregionalPopulation[aPeriod] = subregionalPopulation;
-        mSubregionalIncome[aPeriod] = subregionalIncome;
+        double subregionalIncome = (mSubregIncomeShare[aPeriod] * gdp * CONV_THOUS / subregionalPopulation) / CVRT90;
 
 
         // Price
@@ -213,16 +203,42 @@ double TrnFinalDemand::calcFinalDemand(const string& aRegionName,
     double price_adj = getPricePaid(aRegionName, aPeriod);
     double price = price_adj + PriceAdjustParam;
 
+    //Bias Adder
+    double TrnBiasAdder = mBiasAdderTrn[aPeriod];
 
-    // Function
-    mServiceDemands[aPeriod] = mTrnCoef * subregionalIncome * price * subregionalPopulation;
+
+    // Save as an object for debugging
+    mSubregionalPopulation[aPeriod] = subregionalPopulation;
+    mSubregionalIncome[aPeriod] = subregionalIncome;
+    mBiasAdderTrn[aPeriod] = TrnBiasAdder;
+
+        // Function
+    //mServiceDemands[aPeriod] = mTrnCoef * subregionalIncome * price * subregionalPopulation;
+
+    mServiceDemands[aPeriod] = (mTrnCoef * subregionalIncome * price * subregionalPopulation) + TrnBiasAdder;
 
     }
+
+
+
+    /*!// Adjust for negative demands
+    if (mServiceDemands[aPeriod] < mBaseService[scenario->getModeltime()->getFinalCalibrationPeriod()]) {
+
+        mServiceDemands[aPeriod] = mBaseService[scenario->getModeltime()->getFinalCalibrationPeriod()];
+
+    }
+
+    else {
+
+        mServiceDemands[aPeriod] = mServiceDemands[aPeriod];
+
+
+    }
+    */
 
     return mServiceDemands[aPeriod];
 
 }
-
 
 void TrnFinalDemand::accept(IVisitor* aVisitor,
     const int aPeriod) const

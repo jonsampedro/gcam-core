@@ -122,6 +122,9 @@ protected:
         //! Coefficient to estimate pass_km demand                      
         DEFINE_VARIABLE(SIMPLE, "coef_trn", mTrnCoef, Value),
 
+        //! Bias Adder to estimate pass_km demand                      
+        DEFINE_VARIABLE(ARRAY, "bias-adder", mBiasAdderTrn, objects::PeriodVector<Value>),
+
         //! Coefficient to adjust trn prices                       
         DEFINE_VARIABLE(SIMPLE, "basePrice", mBasePriceTrn, Value),
 
