@@ -158,7 +158,7 @@ module_gcamusa_transportation_xml <- function(command, ...) {
                      "L254.StubTranTechLoadFactor_USA",
                      "L254.StubTranTechCost_USA",
                      "L254.StubTranTechCoef_USA",
-                     "L254.PerCapitaBased_passUSA",
+                     "L254.PerCapitaBased_pass_USA",
                      "L254.PerCapitaBased_fr_USA",
                      "L254.PriceElasticity_pass_USA",
                      "L254.PriceElasticity_fr_USA",

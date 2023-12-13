@@ -19,7 +19,7 @@
 #' \code{L254.StubTranTechCost}, \code{L254.StubTranTechCoef}, \code{L254.StubTechCalInput_passthru},
 #' \code{L254.StubTechProd_nonmotor}, \code{L254.PerCapitaBased_pass}, \code{L254.PerCapitaBased_fr}, \code{L254.PriceElasticity_pass}, \code{L254.PriceElasticity_fr},
 #' \code{L254.IncomeElasticity_pass},\code{L254.IncomeElasticity_fr},  \code{L254.BaseService_pass}, \code{L254.BaseService_fr},
-#' \code{L244.SubregionalShares_trn} ,\code{L254.demandFn_trn_coef}, \code{L244.TrnShares}, \code{L254.CalPrice_trn}.
+#' \code{L244.SubregionalShares_trn} ,\code{L254.demandFn_trn_coef}, \code{L244.TrnShares}, \code{L254.CalPrice_trn}, \code{L254.Trn.bias.adder}.
 #'  The corresponding file in the
 #' original data system was \code{L254.transportation_UCD.R} (energy level2).
 #' @details Due to the asymmetrical nature of the transportation sectors in the various regions, we can't simply write
@@ -112,6 +112,7 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
              "L244.TrnShares",
              "L244.SubregionalShares_trn",
              "L254.demandFn_trn_coef",
+             "L254.Trn.bias.adder",
              "L254.CalPrice_trn"))
   } else if(command == driver.MAKE) {
 
@@ -1206,7 +1207,9 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
       mutate(lag_price = lag(price)) %>%
       mutate(lag_price = if_else(is.na(lag_price), approx_fun(year, lag_price, rule = 2), lag_price)) %>%
       ungroup() %>%
-      rename(energy.final.demand = trn.final.demand)
+      rename(energy.final.demand = trn.final.demand) %>%
+      # Per capita income needs to be set to $1975 to be conistsent with the price
+      mutate(pcGDP_thous75USD = pcGDP_thous90USD * gcamdata::gdp_deflator(1975,1990))
 
     #-----------------------------------------
 
@@ -1215,7 +1218,7 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
 
     fit_pass_fn <- function(df) {
 
-      formula <- "base.service ~ a * pcGDP_thous90USD * price * pop"
+      formula <- "base.service ~ a * pcGDP_thous75USD * price * pop"
       start.value <- c(a = 1)
 
       fit_pass_df <- nls(formula, df, start.value)
@@ -1237,6 +1240,54 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
       distinct()
 
 
+    # Get the bias adder parameter
+    # Calculate decile-specific adders and transition to the cmmon adder in 2030
+
+    adder.trans.year <- 2030
+
+    L254.Trn.bias.adder_pre <- trn_data_fin %>%
+      filter(year == MODEL_FINAL_BASE_YEAR) %>%
+      mutate(est.base.service = coef_trn * pcGDP_thous75USD * price * pop) %>%
+      mutate(bias.adder = base.service - est.base.service) %>%
+      unite(energy.final.demand, c("energy.final.demand", "group"), sep = "_") %>%
+      rename(trn.final.demand = energy.final.demand) %>%
+      distinct() %>%
+      select(LEVEL2_DATA_NAMES[["Trn_bias_adder"]])
+
+    L254.Trn.bias.adder_fut <- trn_data_fin %>%
+      filter(year == MODEL_FINAL_BASE_YEAR) %>%
+      mutate(est.base.service = coef_trn * pcGDP_thous75USD * price * pop) %>%
+      group_by(sce, region, year, energy.final.demand) %>%
+      summarise(base.service = sum(base.service),
+                est.base.service = sum(est.base.service)) %>%
+      ungroup() %>%
+      repeat_add_columns(tibble(group = income_groups)) %>%
+      mutate(bias.adder = (base.service - est.base.service) / length(income_groups)) %>%
+      unite(energy.final.demand, c("energy.final.demand", "group"), sep = "_") %>%
+      rename(trn.final.demand = energy.final.demand) %>%
+      distinct() %>%
+      select(-year) %>%
+      mutate(year = adder.trans.year) %>%
+      select(LEVEL2_DATA_NAMES[["Trn_bias_adder"]])
+
+    intermediate.years <-seq( MODEL_FINAL_BASE_YEAR, adder.trans.year, by = 5)
+    future.years <- seq(adder.trans.year, max(MODEL_YEARS), by = 5)
+
+    L254.Trn.bias.adder <- bind_rows(L254.Trn.bias.adder_pre, L254.Trn.bias.adder_fut) %>%
+      complete(nesting(region, trn.final.demand), year = c(year, intermediate.years)) %>%
+      group_by(region, trn.final.demand) %>%
+      mutate(bias.adder = approx_fun(year, bias.adder, rule = 1)) %>%
+      ungroup() %>%
+      complete(nesting(region, trn.final.demand), year = c(year, future.years)) %>%
+      group_by(region, trn.final.demand) %>%
+      mutate(bias.adder = approx_fun(year, bias.adder, rule = 2)) %>%
+      ungroup() %>%
+      distinct() %>%
+      mutate(sce = "CORE") %>%
+      select(LEVEL2_DATA_NAMES[["Trn_bias_adder"]], sce)
+
+
+    #--------------------
     # Split pass and freight to write differentiated functions (trn-final demand for pass and energy-final demand for freight)
 
     # L254.PerCapitaBased
@@ -1665,6 +1716,16 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
       add_precursors("common/GCAM_region_names", "energy/A54.CalPrice_trn") ->
       L254.CalPrice_trn
 
+    L254.Trn.bias.adder %>%
+      add_title("Bias adder for the trn-function calibration") %>%
+      add_units("Pass-km") %>%
+      add_comments("estimated") %>%
+      add_legacy_name("L254.Trn.bias.adder") %>%
+      add_precursors("common/GCAM_region_names", "L102.pcgdp_thous90USD_Scen_R_Y") ->
+      L254.Trn.bias.adder
+
+
+
     return_data(L254.Supplysector_trn, L254.FinalEnergyKeyword_trn, L254.tranSubsectorLogit,
                 L254.tranSubsectorShrwt, L254.tranSubsectorShrwtFllt, L254.tranSubsectorInterp,
                 L254.tranSubsectorInterpTo, L254.tranSubsectorSpeed, L254.tranSubsectorSpeed_passthru,
@@ -1676,7 +1737,8 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
                 L254.StubTranTechCost, L254.StubTranTechCoef, L254.StubTechCalInput_passthru,
                 L254.StubTechProd_nonmotor, L254.PerCapitaBased_pass, L254.PerCapitaBased_fr, L254.PriceElasticity_pass, L254.PriceElasticity_fr,
                 L254.IncomeElasticity_pass, L254.IncomeElasticity_fr, L254.BaseService_pass, L254.BaseService_fr,
-                L244.TrnShares, L244.SubregionalShares_trn, L254.demandFn_trn_coef, L254.CalPrice_trn, L254.StubTechTrackCapital)
+                L244.TrnShares, L244.SubregionalShares_trn, L254.demandFn_trn_coef, L254.CalPrice_trn, L254.StubTechTrackCapital,
+                L254.Trn.bias.adder)
 
 
   } else {

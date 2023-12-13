@@ -685,7 +685,7 @@ module_gcamusa_L254.transportation <- function(command, ...) {
       add_legacy_name("L254.IncomeElasticity_fr_USA") %>%
       add_precursors("gcam-usa/states_subregions",
                      "L254.IncomeElasticity_fr") ->
-      L254.IncomeElasticity_USA
+      L254.IncomeElasticity_fr_USA
 
     L254.StubTranTechCalInput_USA %>%
       add_title("Calibrated energy consumption by all transportation stub technologies in the US states") %>%

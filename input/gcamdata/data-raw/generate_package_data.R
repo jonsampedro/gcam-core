@@ -340,6 +340,7 @@ generate_level2_data_names <- function() {
   level2_data_names[["DeleteFinalDemand"]] <- level2_data_names[["EnergyFinalDemand"]]
   level2_data_names[["DeleteFinalDemand_trn"]] <- c("region", "trn.final.demand")
   level2_data_names[["DemandFunction_trn_coef"]] <- c("region", "trn.final.demand", "coef_trn")
+  level2_data_names[["Trn_bias_adder"]] <- c("region", "trn.final.demand", "year", "bias.adder")
   level2_data_names[["CalPrice_trn"]] <- c("region", "trn.final.demand","basePrice")
   level2_data_names[["DeleteConsumer"]] <- c("region", "gcam.consumer")
   level2_data_names[["DeleteThermalService"]] <- c("region", "gcam.consumer", "nodeInput", "building.node.input", "thermal.building.service.input", "supplysector")
