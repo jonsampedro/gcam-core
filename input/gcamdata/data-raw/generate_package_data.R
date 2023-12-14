@@ -308,6 +308,7 @@ generate_level2_data_names <- function() {
   level2_data_names[["aeei"]] <- c("region", "energy.final.demand", "year", "aeei")
   level2_data_names[["FinalDemandInfo"]] <- c("region", "energy.final.demand", "perCapitaBased", "income.elasticity", "year", "base.service", "aeei")
   level2_data_names[["SubregionalShares"]] <- c("region", "gcam.consumer", "pop.year.fillout", "inc.year.fillout", "subregional.population.share", "subregional.income.share")
+  level2_data_names[["SubregionalShares_Year"]] <- c("region", "gcam.consumer", "subregional.population.share.year", "subregional.income.share.year", "subregional.population.share", "subregional.income.share")
   level2_data_names[["DemandFunction_food"]] <- c("region", "gcam.consumer", "nodeInput", "prodDmdFnType")
   level2_data_names[["DemandFunction_flsp"]] <- c("region", "gcam.consumer", "nodeInput", "prodDmdFnType")
   level2_data_names[["DemandFunction_serv"]] <- c("region", "gcam.consumer", "nodeInput", "building.node.input", "prodDmdFnType")
