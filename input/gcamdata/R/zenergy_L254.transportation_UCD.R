@@ -64,7 +64,7 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
              "L154.loadfactor_R_trn_m_sz_tech_F_Y",
              "L154.speed_kmhr_R_trn_m_sz_tech_F_Y",
              "L154.out_mpkm_R_trn_nonmotor_Yh",
-             FILE = "socioeconomics/income_shares",
+             "L106.income_distributions",
              "L101.Pop_thous_R_Yh",
              "L102.pcgdp_thous90USD_Scen_R_Y",
              FILE = "energy/A54.CalPrice_trn",
@@ -212,7 +212,18 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
 
 
     # Load subregional shares:
-    income_shares<-get_data(all_data, "socioeconomics/income_shares")
+    L106.income_shares <- get_data(all_data, "L106.income_distributions", strip_attributes = TRUE)
+    income_groups <- unique(L106.income_shares$gcam.consumer)
+
+    # Extrapolate income shares to all historical years
+    L106.income_shares_allhist <- L106.income_shares %>%
+      filter(year <= MODEL_FINAL_BASE_YEAR) %>%
+      complete(nesting(region, gcam.consumer), year = c(year, HISTORICAL_YEARS)) %>%
+      group_by(region, gcam.consumer) %>%
+      mutate(subregional.population.share = approx_fun(year, subregional.population.share, rule = 2),
+             subregional.income.share = approx_fun(year, subregional.income.share, rule = 1),
+             subregional.income.share = approx_fun(year, subregional.income.share, rule = 2)) %>%
+      ungroup()
 
     # Create subregional shares for transport
     L244.SubregionalShares_trn <- get_data(all_data, "L244.SubregionalShares") %>%
@@ -225,25 +236,6 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
 
 
     # ===================================================
-    # First, clean and prepare data on current and future income distribution projections
-    L144.income_shares<-income_shares %>%
-      filter(model %in% c(socioeconomics.BASE_INCSHARE_BASE, socioeconomics.BASE_INCSHARE_MODEL)) %>%
-      select(-gini, -gdp_pcap_decile, -model) %>%
-      rename(group = category,
-             share = shares) %>%
-      group_by(GCAM_region_ID, year, sce) %>%
-      mutate(share_agg = sum(share)) %>%
-      ungroup()
-
-    # Check income shares are correct for all regions
-    if((sum(L144.income_shares$share_agg) / nrow(L144.income_shares))-1 > 0.01){
-      print("WARNING:income shares not correctly asigned")
-    }
-
-    L144.income_shares<-L144.income_shares %>%
-      select(-share_agg)
-
-    income_groups <- unique(L144.income_shares$group)
 
     # Calculate suregional gdp per capita:
     # Subregional per capita income per region, year and consumer group
@@ -254,14 +246,12 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
       left_join_error_no_match(L101.Pop_thous_R_Yh, by=c("GCAM_region_ID","year")) %>%
       rename(pop_thous = value) %>%
       mutate(gdp = pcGDP_thous90USD * 1E3 * pop_thous * 1E3) %>%
-      repeat_add_columns(tibble(group = unique(L144.income_shares$group))) %>%
-      mutate(pop_thous = pop_thous * (1 / length(unique(L144.income_shares$group)))) %>%
+      repeat_add_columns(tibble(group = unique(income_groups))) %>%
+      mutate(pop_thous = pop_thous * (1 / length(unique(income_groups)))) %>%
       mutate(sce = gsub("g", "", scenario)) %>%
-      left_join_error_no_match(L144.income_shares %>%
-                                 filter(year %in% HISTORICAL_YEARS) %>%
-                                 select(-sce)
-                               , by = c("GCAM_region_ID", "year", "group")) %>%
-      mutate(gdp_gr = gdp * share,
+      left_join_error_no_match(L106.income_shares_allhist %>%
+                                 rename(group = gcam.consumer), by = c("region", "year", "group")) %>%
+      mutate(gdp_gr = gdp * subregional.income.share,
              gdp_pc = (gdp_gr / 1E3) / (pop_thous * 1E3)) %>%
       select(-pcGDP_thous90USD) %>%
       rename(pcGDP_thous90USD = gdp_pc) %>%
@@ -379,7 +369,7 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
       filter(sce != "SSP1") %>%
       bind_rows(get_data(all_data, "energy/A54.demand_ssp1",strip_attributes = TRUE) %>% mutate(sce = "SSP1")) %>%
       filter(grepl("pass", energy.final.demand) | grepl("aviation", energy.final.demand)) %>%
-      repeat_add_columns(tibble(group = unique(L144.income_shares$group))) %>%
+      repeat_add_columns(tibble(group = unique(income_groups))) %>%
       mutate(year = MODEL_FINAL_BASE_YEAR) %>%
       repeat_add_columns(tibble(region = unique(GCAM_region_names$region))) %>%
       left_join_error_no_match(GCAM_region_names, by = "region") %>%
@@ -1668,7 +1658,7 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
       add_precursors("common/GCAM_region_names", "energy/A54.sector", "energy/mappings/UCD_techs", "energy/mappings/UCD_techs_revised", "energy/mappings/UCD_size_class_revisions",
                      "L154.out_mpkm_R_trn_nonmotor_Yh", "L154.intensity_MJvkm_R_trn_m_sz_tech_F_Y",
                      "L154.loadfactor_R_trn_m_sz_tech_F_Y", "L154.in_EJ_R_trn_m_sz_tech_F_Yh",
-                     "energy/A54.CalPrice_trn", "socioeconomics/income_shares", "L101.Pop_thous_R_Yh", "L102.pcgdp_thous90USD_Scen_R_Y") ->
+                     "energy/A54.CalPrice_trn", "L106.income_distributions", "L101.Pop_thous_R_Yh", "L102.pcgdp_thous90USD_Scen_R_Y") ->
       L254.BaseService_pass
 
     L254.BaseService_fr %>%
@@ -1679,7 +1669,7 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
       add_precursors("common/GCAM_region_names", "energy/A54.sector", "energy/mappings/UCD_techs", "energy/mappings/UCD_techs_revised", "energy/mappings/UCD_size_class_revisions",
                      "L154.out_mpkm_R_trn_nonmotor_Yh", "L154.intensity_MJvkm_R_trn_m_sz_tech_F_Y",
                      "L154.loadfactor_R_trn_m_sz_tech_F_Y", "L154.in_EJ_R_trn_m_sz_tech_F_Yh",
-                     "energy/A54.CalPrice_trn", "socioeconomics/income_shares", "L101.Pop_thous_R_Yh", "L102.pcgdp_thous90USD_Scen_R_Y") ->
+                     "energy/A54.CalPrice_trn", "L106.income_distributions", "L101.Pop_thous_R_Yh", "L102.pcgdp_thous90USD_Scen_R_Y") ->
       L254.BaseService_fr
 
 

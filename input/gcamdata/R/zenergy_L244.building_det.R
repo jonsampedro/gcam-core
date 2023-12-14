@@ -8,8 +8,7 @@
 #' @param ... other optional parameters, depending on command
 #' @return Depends on \code{command}: either a vector of required inputs,
 #' a vector of output names, or (if \code{command} is "MAKE") all
-#' the generated outputs: \code{L244.SubregionalShares}, \code{L244.SubregionalShares_SSP1}, \code{L244.SubregionalShares_SSP2},\code{L244.SubregionalShares_SSP3},
-#' \code{L244.SubregionalShares_SSP4},\code{L244.SubregionalShares_SSP5},
+#' the generated outputs: \code{L244.SubregionalShares}
 #' \code{L244.PriceExp_IntGains}, \code{L244.Floorspace}, \code{L244.DemandFunction_serv},
 #' \code{L244.DemandFunction_flsp}, \code{L244.Satiation_flsp}, \code{L244.SatiationAdder}, \code{L244.ThermalBaseService}, \code{L244.GenericBaseService},
 #'\code{L244.ThermalServiceSatiation}, \code{L244.GenericServiceSatiation}, \code{L244.Intgains_scalar}, \code{L244.ShellConductance_bld},
@@ -70,17 +69,12 @@ module_energy_L244.building_det <- function(command, ...) {
              "L143.HDDCDD_scen_R_Y",
              "L101.Pop_thous_R_Yh",
              "L102.pcgdp_thous90USD_Scen_R_Y",
-             FILE = "socioeconomics/income_shares",
+             "L106.income_distributions",
              "L144.flsp_param",
              "L144.hab_land_flsp_fin",
              "L144.prices_bld"))
   } else if(command == driver.DECLARE_OUTPUTS) {
     return(c("L244.SubregionalShares",
-             "L244.SubregionalShares_SSP1",
-             "L244.SubregionalShares_SSP2",
-             "L244.SubregionalShares_SSP3",
-             "L244.SubregionalShares_SSP4",
-             "L244.SubregionalShares_SSP5",
              "L244.PriceExp_IntGains",
              "L244.Floorspace",
              "L244.DemandFunction_serv",
@@ -227,59 +221,27 @@ module_energy_L244.building_det <- function(command, ...) {
     L102.pcgdp_thous90USD_Scen_R_Y <- get_data(all_data, "L102.pcgdp_thous90USD_Scen_R_Y") # year comes in as double
     L144.flsp_param <- get_data(all_data, "L144.flsp_param", strip_attributes = TRUE)
     L144.prices_bld<-get_data(all_data, "L144.prices_bld", strip_attributes = TRUE)
-    income_shares<-get_data(all_data, "socioeconomics/income_shares")
-    n_groups<-nrow(unique(get_data(all_data, "socioeconomics/income_shares") %>%
-                            select(category)))
+    L106.income_shares <- get_data(all_data, "L106.income_distributions", strip_attributes = TRUE)
+    n_groups<-nrow(unique(L106.income_shares %>%
+                            select(gcam.consumer)))
 
     # Add a deflator for harmonizing GDPpc with prices
     def9075<-2.212
 
     # ===================================================
-    # First, clean and prepare data on current and future income distribution projections
-    L144.income_shares<-income_shares %>%
-      filter(model %in% c(socioeconomics.BASE_INCSHARE_BASE,socioeconomics.BASE_INCSHARE_MODEL)) %>%
-      select(-gini,-gdp_pcap_decile,-model) %>%
-      rename(group = category,
-             scen = sce,
-             share = shares) %>%
-    group_by(GCAM_region_ID,year,scen) %>%
-      mutate(share_agg = sum(share)) %>%
-      ungroup()
-
-    # Check income shares are correct for all regions
-    if((sum(L144.income_shares$share_agg) / nrow(L144.income_shares))-1 > 0.01){
-      print("WARNING:income shares not correctly asigned")
-    }
-
-    L144.income_shares<-L144.income_shares %>%
-      select(-share_agg)
-
-
     # Adjust gcam.consumer file to add the multiple consumers combining the raw file with multiple consumer information
     A44.gcam_consumer<-A44.gcam_consumer %>%
       filter(gcam.consumer == "resid") %>%
-      repeat_add_columns(tibble(group=unique(L144.income_shares$group))) %>%
+      repeat_add_columns(tibble(group=unique(L106.income_shares$gcam.consumer))) %>%
       unite(gcam.consumer, c(gcam.consumer,group),sep="_") %>%
       bind_rows(A44.gcam_consumer %>% filter(gcam.consumer == "comm"))
 
 
     # Create the final dataset with subregional population and income shares
-    L244.SubregionalShares <- write_to_all_regions(A44.gcam_consumer, LEVEL2_DATA_NAMES[["DeleteConsumer"]],
-                                                   GCAM_region_names = GCAM_region_names) %>%
-      # filter residential sector to implement multiple consumers
-      filter(grepl("resid",gcam.consumer)) %>%
-      separate(gcam.consumer,c("gcam.consumer","group"),sep = "_") %>%
-      repeat_add_columns(tibble(pop.year.fillout=MODEL_YEARS)) %>%
-      mutate(inc.year.fillout = pop.year.fillout) %>%
-      left_join_error_no_match(A_regions %>% select(region,GCAM_region_ID), by=c("region")) %>%
-      left_join_error_no_match(L144.income_shares %>%
-                                 filter(scen %in% c(socioeconomics.BASE_INCSHARE_BASE,socioeconomics.BASE_INCSHARE_SCENARIO)) %>%
-                                 rename(pop.year.fillout=year)
-                                 ,by=c("GCAM_region_ID","group","pop.year.fillout")) %>%
-      mutate(subregional.population.share = 1/n_groups) %>%
-      unite(gcam.consumer,c("gcam.consumer","group"),sep = "_") %>%
-      rename(subregional.income.share = share) %>%
-      select(-scen,-GCAM_region_ID) %>%
+    L244.SubregionalShares <- L106.income_shares %>%
+      rename(pop.year.fillout = year) %>%
+      mutate(inc.year.fillout = pop.year.fillout,
+             gcam.consumer = paste0("resid_", gcam.consumer)) %>%
       # bind commercial subregional population and income shares (currently not used, set to 1)
       bind_rows(write_to_all_regions(A44.gcam_consumer, LEVEL2_DATA_NAMES[["DeleteConsumer"]],
                                      GCAM_region_names = GCAM_region_names) %>%
@@ -291,64 +253,16 @@ module_energy_L244.building_det <- function(command, ...) {
 
    # Create a similar dataframe with all historical years
    # Used to create the historical subregional GDPpc dataframe
-    L244.SubregionalShares_allhist<-write_to_all_regions(A44.gcam_consumer, LEVEL2_DATA_NAMES[["DeleteConsumer"]],
-                                                         GCAM_region_names = GCAM_region_names) %>%
-      filter(grepl("resid",gcam.consumer)) %>%
-      separate(gcam.consumer,c("gcam.consumer","group"),sep = "_") %>%
-      repeat_add_columns(tibble(pop.year.fillout=(HISTORICAL_YEARS))) %>%
-      mutate(inc.year.fillout=pop.year.fillout) %>%
-      left_join_error_no_match(A_regions %>% select(region,GCAM_region_ID), by=c("region")) %>%
-      left_join_error_no_match(L144.income_shares %>%
-                                 filter(scen %in% c(socioeconomics.BASE_INCSHARE_BASE,socioeconomics.BASE_INCSHARE_SCENARIO)) %>%
-                                 rename(pop.year.fillout=year)
-                               ,by=c("GCAM_region_ID","group","pop.year.fillout")) %>%
-      mutate(subregional.population.share=1/n_groups) %>%
-      unite(gcam.consumer,c("gcam.consumer","group"),sep = "_") %>%
-      rename(subregional.income.share=share) %>%
-      select(-scen,-GCAM_region_ID) %>%
-      bind_rows(write_to_all_regions(A44.gcam_consumer, LEVEL2_DATA_NAMES[["DeleteConsumer"]],
-                                     GCAM_region_names = GCAM_region_names) %>%
-                  filter(gcam.consumer=="comm") %>%
-                  repeat_add_columns(tibble(pop.year.fillout=HISTORICAL_YEARS)) %>%
-                  mutate(inc.year.fillout=pop.year.fillout) %>%
-                  mutate(subregional.population.share = 1,
-                         subregional.income.share = 1))
-
-    # Generate subregional shares for diferent SSP scenarios
-    L244.SubregionalShares_SSP <- write_to_all_regions(A44.gcam_consumer, LEVEL2_DATA_NAMES[["DeleteConsumer"]],
-                                                   GCAM_region_names = GCAM_region_names) %>%
-      # filter residential sector to implement multiple consumers
-      filter(grepl("resid",gcam.consumer)) %>%
-      separate(gcam.consumer,c("gcam.consumer","group"),sep = "_") %>%
-      repeat_add_columns(tibble(pop.year.fillout=MODEL_YEARS)) %>%
-      mutate(inc.year.fillout = pop.year.fillout) %>%
-      left_join_error_no_match(A_regions %>% select(region,GCAM_region_ID), by=c("region")) %>%
-      repeat_add_columns(tibble(scen = unique(L144.income_shares$scen))) %>%
-      filter(grepl("SSP",scen)) %>%
-      filter(pop.year.fillout > MODEL_FINAL_BASE_YEAR) %>%
-      left_join_error_no_match(L144.income_shares %>%
-                                 rename(pop.year.fillout = year)
-                                    ,by=c("GCAM_region_ID","group","pop.year.fillout","scen")) %>%
-      mutate(subregional.population.share = 1/n_groups) %>%
-      unite(gcam.consumer,c("gcam.consumer","group"),sep = "_") %>%
-      rename(subregional.income.share = share,
-             SSP = scen) %>%
-      select(-GCAM_region_ID) %>%
-      split(.$SSP) %>%
-      lapply(function(df) {
-        select(df, -SSP) %>%
-          add_units("Share") %>%
-          add_comments("GDP share for each income group within each region for all SSP scenarios") %>%
-          add_precursors("common/GCAM_region_names","energy/A_regions", "L102.pcgdp_thous90USD_Scen_R_Y",
-                         "L101.Pop_thous_R_Yh","socioeconomics/income_shares")
-      })
-
-    # Assign each tibble in list
-    for(i in names(L244.SubregionalShares_SSP)) {
-      assign(paste0("L244.SubregionalShares_", i), L244.SubregionalShares_SSP[[i]] %>%
-               add_title(paste0("GDP shares: ", i)) %>%
-               add_legacy_name(paste0("L244.SubregionalShares_", i)))
-    }
+    L244.SubregionalShares_allhist <- L244.SubregionalShares %>%
+      filter(pop.year.fillout <= MODEL_FINAL_BASE_YEAR) %>%
+      select(-inc.year.fillout) %>%
+      complete(nesting(region, gcam.consumer), pop.year.fillout = c(pop.year.fillout, HISTORICAL_YEARS)) %>%
+      group_by(region, gcam.consumer) %>%
+      mutate(subregional.population.share = approx_fun(pop.year.fillout, subregional.population.share, rule = 2),
+             subregional.income.share = approx_fun(pop.year.fillout, subregional.income.share, rule = 1),
+             subregional.income.share = approx_fun(pop.year.fillout, subregional.income.share, rule = 2)) %>%
+      ungroup() %>%
+      mutate(inc.year.fillout = pop.year.fillout)
 
 
     # ===================================================
@@ -357,7 +271,7 @@ module_energy_L244.building_det <- function(command, ...) {
     L101.Pop_thous_R_Yh_gr <- L101.Pop_thous_R_Yh %>%
       left_join_error_no_match(GCAM_region_names, by = "GCAM_region_ID") %>%
       rename(pop_thous = value) %>%
-      repeat_add_columns(tibble(gcam.consumer=paste0("resid_",unique(L144.income_shares$group)))) %>%
+      repeat_add_columns(tibble(gcam.consumer=paste0("resid_",unique(L106.income_shares$gcam.consumer)))) %>%
       mutate(pop_thous = pop_thous*(1/n_groups)) %>%
       bind_rows(L101.Pop_thous_R_Yh %>%
                   left_join_error_no_match(A_regions %>% select(region,GCAM_region_ID),by="GCAM_region_ID") %>%
@@ -373,7 +287,7 @@ module_energy_L244.building_det <- function(command, ...) {
       left_join_error_no_match(L101.Pop_thous_R_Yh, by=c("GCAM_region_ID","year")) %>%
       rename(pop_thous = value) %>%
       mutate(gdp = pcGDP_thous90USD * 1E3 * pop_thous * 1E3) %>%
-      repeat_add_columns(tibble(gcam.consumer=paste0("resid_",unique(L144.income_shares$group)))) %>%
+      repeat_add_columns(tibble(gcam.consumer=paste0("resid_",unique(L106.income_shares$gcam.consumer)))) %>%
       mutate(pop_thous = pop_thous * (1/n_groups)) %>%
       left_join_error_no_match(L244.SubregionalShares_allhist %>%
                                  select(-subregional.population.share,-pop.year.fillout) %>%
@@ -397,7 +311,7 @@ module_energy_L244.building_det <- function(command, ...) {
     L244.DemandFunction_flsp <- write_to_all_regions(A44.demandFn_flsp, LEVEL2_DATA_NAMES[["DemandFunction_flsp"]],
                                                      GCAM_region_names = GCAM_region_names) %>%
       filter(gcam.consumer == "resid") %>%
-      repeat_add_columns(tibble(group=unique(L144.income_shares$group))) %>%
+      repeat_add_columns(tibble(group=unique(L106.income_shares$gcam.consumer))) %>%
       unite(gcam.consumer, c(gcam.consumer,group),sep="_") %>%
       bind_rows(write_to_all_regions(A44.demandFn_flsp, LEVEL2_DATA_NAMES[["DemandFunction_flsp"]],
                                      GCAM_region_names = GCAM_region_names) %>% filter(gcam.consumer == "comm"))
@@ -406,7 +320,7 @@ module_energy_L244.building_det <- function(command, ...) {
     L244.DemandFunction_serv <- write_to_all_regions(A44.demandFn_serv, LEVEL2_DATA_NAMES[["DemandFunction_serv"]],
                                                      GCAM_region_names = GCAM_region_names) %>%
       filter(gcam.consumer == "resid") %>%
-      repeat_add_columns(tibble(group=unique(L144.income_shares$group))) %>%
+      repeat_add_columns(tibble(group=unique(L106.income_shares$gcam.consumer))) %>%
       unite(gcam.consumer, c(gcam.consumer,group),sep="_") %>%
       bind_rows(write_to_all_regions(A44.demandFn_serv, LEVEL2_DATA_NAMES[["DemandFunction_serv"]],
                                      GCAM_region_names = GCAM_region_names) %>% filter(gcam.consumer == "comm"))
@@ -430,7 +344,7 @@ module_energy_L244.building_det <- function(command, ...) {
     # Using the parameters estimated in module LA144.building_det_flsp, calculate the "estimated" residential floorspace
     # These estimations will be used for calibration and for the calculation of the regional bias adder (bias-adjust-parameter) in those regions with observed historical data
     L244.Floorspace_resid_est<-L144.flsp_param %>%
-      repeat_add_columns(tibble(gcam.consumer=paste0("resid_",unique(L144.income_shares$group)))) %>%
+      repeat_add_columns(tibble(gcam.consumer=paste0("resid_",unique(L106.income_shares$gcam.consumer)))) %>%
       left_join_error_no_match(GCAM_region_names, by="region") %>%
       repeat_add_columns(tibble(year=HISTORICAL_YEARS)) %>%
       left_join_error_no_match(L102.pcgdp_thous90USD_Scen_R_Y_gr %>% filter(scenario == socioeconomics.BASE_GDP_SCENARIO), by=c("GCAM_region_ID","year","gcam.consumer","region")) %>%
@@ -450,7 +364,7 @@ module_energy_L244.building_det <- function(command, ...) {
       left_join_error_no_match(L144.flsp_bm2_R_res_Yh, by = c("year","GCAM_region_ID")) %>%
       mutate(bias.adder = (value-flsp_est)/n_groups) %>%
       select(GCAM_region_ID,year,region,bias.adder) %>%
-      repeat_add_columns(tibble(gcam.consumer=paste0("resid_",unique(L144.income_shares$group))))
+      repeat_add_columns(tibble(gcam.consumer=paste0("resid_",unique(L106.income_shares$gcam.consumer))))
 
     # Combine observed data with the bias adder to obtain historical residential floorspace (BM2)
     L244.Floorspace_resid<-L244.Floorspace_resid_est %>%
@@ -486,7 +400,7 @@ module_energy_L244.building_det <- function(command, ...) {
 
     # The following table puts together all the parameters that will be used in the estimation of future residential floorspace
     L244.GompFnParam<-L144.flsp_param %>%
-      repeat_add_columns(tibble(gcam.consumer=paste0("resid_",unique(L144.income_shares$group)))) %>%
+      repeat_add_columns(tibble(gcam.consumer=paste0("resid_",unique(L106.income_shares$gcam.consumer)))) %>%
       left_join_error_no_match(GCAM_region_names, by="region") %>%
       mutate(year=MODEL_FINAL_BASE_YEAR) %>%
       left_join_error_no_match(L244.Base_pcFlsp, by = c("region", "gcam.consumer", "GCAM_region_ID", "year")) %>%
@@ -907,7 +821,7 @@ module_energy_L244.building_det <- function(command, ...) {
       unite(scenario, SRES, GCM) %>%
       # add consumer groups:
       filter(grepl("resid",gcam.consumer)) %>%
-      repeat_add_columns(tibble(group=unique(L144.income_shares$group))) %>%
+      repeat_add_columns(tibble(group=unique(L106.income_shares$gcam.consumer))) %>%
       unite(gcam.consumer, c(gcam.consumer,group),sep="_") %>%
       bind_rows(L244.ThermalBaseService %>%
                   select(-year, -base.service) %>%
@@ -1361,7 +1275,7 @@ module_energy_L244.building_det <- function(command, ...) {
       filter(base.service == 0) %>%
       select(-base.service) %>%
       rename(supplysector = service) %>%
-      repeat_add_columns(tibble(group=unique(L144.income_shares$group))) %>%
+      repeat_add_columns(tibble(group=unique(L106.income_shares$gcam.consumer))) %>%
       mutate(gcam.consumer = if_else(grepl("resid",supplysector),"resid","comm"),
              nodeInput = gcam.consumer,
              building.node.input = paste0(nodeInput,"_building")) %>%
@@ -1392,7 +1306,7 @@ module_energy_L244.building_det <- function(command, ...) {
       filter(base.service == 0) %>%
       select(-base.service) %>%
       rename(supplysector = service) %>%
-      repeat_add_columns(tibble(group=unique(L144.income_shares$group))) %>%
+      repeat_add_columns(tibble(group=unique(L106.income_shares$gcam.consumer))) %>%
       mutate(gcam.consumer = if_else(grepl("resid",supplysector),"resid","comm"),
              nodeInput = gcam.consumer,
              building.node.input = paste0(nodeInput,"_building")) %>%
@@ -1503,7 +1417,7 @@ module_energy_L244.building_det <- function(command, ...) {
       select(LEVEL2_DATA_NAMES[["GenericServiceImpedance"]]) %>%
       filter(grepl("resid",gcam.consumer),
              grepl("modern",building.service.input)) %>%
-      repeat_add_columns(tibble(group=unique(L144.income_shares$group))) %>%
+      repeat_add_columns(tibble(group=unique(L106.income_shares$gcam.consumer))) %>%
       unite(gcam.consumer,c("gcam.consumer","group"),sep = "_") %>%
       bind_rows(L244.GenericServiceImpedance_allvars %>%
                   select(LEVEL2_DATA_NAMES[["GenericServiceImpedance"]]) %>%
@@ -1516,7 +1430,7 @@ module_energy_L244.building_det <- function(command, ...) {
       select(LEVEL2_DATA_NAMES[["GenericServiceCoef"]]) %>%
       filter(grepl("resid",gcam.consumer),
              grepl("modern",building.service.input)) %>%
-      repeat_add_columns(tibble(group=unique(L144.income_shares$group))) %>%
+      repeat_add_columns(tibble(group=unique(L106.income_shares$gcam.consumer))) %>%
       unite(gcam.consumer,c("gcam.consumer","group"),sep = "_") %>%
       bind_rows(L244.GenericServiceImpedance_allvars %>%
                   select(LEVEL2_DATA_NAMES[["GenericServiceCoef"]]) %>%
@@ -1579,7 +1493,7 @@ module_energy_L244.building_det <- function(command, ...) {
       # only commercial and residential-modern services use satiation impedance
       filter(!grepl("coal",building.service.input),
              !grepl("TradBio",building.service.input)) %>%
-      repeat_add_columns(tibble(group=unique(L144.income_shares$group))) %>%
+      repeat_add_columns(tibble(group=unique(L106.income_shares$gcam.consumer))) %>%
       unite(gcam.consumer,c("gcam.consumer","group"),sep = "_") %>%
       bind_rows(L244.GenericServiceImpedance_allvars_SSPs %>%
                   select(LEVEL2_DATA_NAMES[["GenericServiceImpedance"]],SSP)  %>%
@@ -1610,7 +1524,7 @@ module_energy_L244.building_det <- function(command, ...) {
       filter(!grepl("coal",building.service.input),
              !grepl("TradBio",building.service.input)) %>%
       filter(grepl("resid",gcam.consumer)) %>%
-      repeat_add_columns(tibble(group=unique(L144.income_shares$group))) %>%
+      repeat_add_columns(tibble(group=unique(L106.income_shares$gcam.consumer))) %>%
       unite(gcam.consumer,c("gcam.consumer","group"),sep = "_") %>%
       bind_rows(L244.GenericServiceImpedance_allvars_SSPs %>%
                   select(LEVEL2_DATA_NAMES[["GenericServiceCoef"]],SSP)  %>%
@@ -1711,7 +1625,7 @@ module_energy_L244.building_det <- function(command, ...) {
       select(LEVEL2_DATA_NAMES[["ThermalServiceImpedance"]]) %>%
       filter(grepl("resid",gcam.consumer),
              grepl("modern",thermal.building.service.input)) %>%
-      repeat_add_columns(tibble(group=unique(L144.income_shares$group))) %>%
+      repeat_add_columns(tibble(group=unique(L106.income_shares$gcam.consumer))) %>%
       unite(gcam.consumer,c("gcam.consumer","group"),sep = "_") %>%
       bind_rows(L244.ThermalServiceImpedance_allvars %>%
                   select(LEVEL2_DATA_NAMES[["ThermalServiceImpedance"]]) %>%
@@ -1722,7 +1636,7 @@ module_energy_L244.building_det <- function(command, ...) {
       select(LEVEL2_DATA_NAMES[["ThermalServiceCoef"]]) %>%
       filter(grepl("resid",gcam.consumer),
              grepl("modern",thermal.building.service.input)) %>%
-      repeat_add_columns(tibble(group=unique(L144.income_shares$group))) %>%
+      repeat_add_columns(tibble(group=unique(L106.income_shares$gcam.consumer))) %>%
       unite(gcam.consumer,c("gcam.consumer","group"),sep = "_") %>%
       bind_rows(L244.ThermalServiceImpedance_allvars %>%
                   select(LEVEL2_DATA_NAMES[["ThermalServiceCoef"]]) %>%
@@ -1756,7 +1670,7 @@ module_energy_L244.building_det <- function(command, ...) {
 
     L244.GenericShares_pre<-L244.GenericBaseService_pre %>%
       filter(grepl("resid",gcam.consumer)) %>%
-      repeat_add_columns(tibble(group=unique(L144.income_shares$group))) %>%
+      repeat_add_columns(tibble(group=unique(L106.income_shares$gcam.consumer))) %>%
       unite(gcam.consumer,c("gcam.consumer","group"),sep = "_") %>%
       bind_rows(L244.GenericBaseService_pre %>%
                   filter(grepl("comm",gcam.consumer))) %>%
@@ -1803,7 +1717,7 @@ module_energy_L244.building_det <- function(command, ...) {
     L244.GenericBaseService<-L244.GenericBaseService_pre %>%
       select(region,gcam.consumer,nodeInput,building.node.input,building.service.input,year, base.service) %>%
       filter(grepl("resid",nodeInput)) %>%
-      repeat_add_columns(tibble(group=unique(L144.income_shares$group))) %>%
+      repeat_add_columns(tibble(group=unique(L106.income_shares$gcam.consumer))) %>%
       unite(gcam.consumer,c("gcam.consumer","group"),sep = "_") %>%
       bind_rows(L244.GenericBaseService_pre %>%
                   select(region,gcam.consumer,nodeInput,building.node.input,building.service.input,year,base.service) %>%
@@ -1836,7 +1750,7 @@ module_energy_L244.building_det <- function(command, ...) {
     L244.ThermalShares_pre<-L244.ThermalBaseService_pre %>%
       select(region,gcam.consumer,nodeInput,building.node.input,thermal.building.service.input,year,base.service,satiation.level,thermal_load,pcGDP_thous90USD,price,`satiation-impedance`) %>%
       filter(grepl("resid",gcam.consumer)) %>%
-      repeat_add_columns(tibble(group=unique(L144.income_shares$group))) %>%
+      repeat_add_columns(tibble(group=unique(L106.income_shares$gcam.consumer))) %>%
       unite(gcam.consumer,c("gcam.consumer","group"),sep = "_") %>%
       bind_rows(L244.ThermalBaseService_pre %>%
                   select(region,gcam.consumer,nodeInput,building.node.input,thermal.building.service.input,year,satiation.level,thermal_load,pcGDP_thous90USD,price,`satiation-impedance`) %>%
@@ -1883,7 +1797,7 @@ module_energy_L244.building_det <- function(command, ...) {
     L244.ThermalBaseService<-L244.ThermalBaseService_pre %>%
       select(region,gcam.consumer,nodeInput,building.node.input,thermal.building.service.input,year, base.service) %>%
       filter(grepl("resid",nodeInput)) %>%
-      repeat_add_columns(tibble(group=unique(L144.income_shares$group))) %>%
+      repeat_add_columns(tibble(group=unique(L106.income_shares$gcam.consumer))) %>%
       unite(gcam.consumer,c("gcam.consumer","group"),sep = "_") %>%
       bind_rows(L244.ThermalBaseService_pre %>%
                   select(region,gcam.consumer,nodeInput,building.node.input,thermal.building.service.input,year ,base.service) %>%
@@ -1970,7 +1884,7 @@ module_energy_L244.building_det <- function(command, ...) {
     L244.GenericCoalCoef<-L244.coal.coef %>%
       filter(service %in% generic_services) %>%
       rename(building.service.input = service) %>%
-      repeat_add_columns(tibble(group=unique(L144.income_shares$group))) %>%
+      repeat_add_columns(tibble(group=unique(L106.income_shares$gcam.consumer))) %>%
       mutate(gcam.consumer = paste0(gcam.consumer,"_",group)) %>%
       mutate(year = MODEL_FINAL_BASE_YEAR) %>%
       left_join_error_no_match(L244.GenericBaseService, by = c("gcam.consumer", "nodeInput", "building.node.input", "building.service.input", "region","year")) %>%
@@ -1985,7 +1899,7 @@ module_energy_L244.building_det <- function(command, ...) {
     L244.ThermalCoalCoef<-L244.coal.coef %>%
       filter(service %in% thermal_services) %>%
       rename(thermal.building.service.input = service) %>%
-      repeat_add_columns(tibble(group=unique(L144.income_shares$group))) %>%
+      repeat_add_columns(tibble(group=unique(L106.income_shares$gcam.consumer))) %>%
       mutate(gcam.consumer = paste0(gcam.consumer,"_",group)) %>%
       mutate(year = MODEL_FINAL_BASE_YEAR) %>%
       left_join_error_no_match(L244.ThermalBaseService, by = c("gcam.consumer", "nodeInput", "building.node.input", "thermal.building.service.input", "region","year")) %>%
@@ -2048,7 +1962,7 @@ module_energy_L244.building_det <- function(command, ...) {
     L244.GenericTradBioCoef<-L244.tradBio.coef %>%
       filter(service %in% generic_services) %>%
       rename(building.service.input = service) %>%
-      repeat_add_columns(tibble(group=unique(L144.income_shares$group))) %>%
+      repeat_add_columns(tibble(group=unique(L106.income_shares$gcam.consumer))) %>%
       mutate(gcam.consumer = paste0(gcam.consumer,"_",group)) %>%
       mutate(year =MODEL_FINAL_BASE_YEAR) %>%
       left_join_error_no_match(L244.GenericBaseService, by = c("gcam.consumer", "nodeInput", "building.node.input", "building.service.input", "region","year")) %>%
@@ -2064,7 +1978,7 @@ module_energy_L244.building_det <- function(command, ...) {
     L244.ThermalTradBioCoef<-L244.tradBio.coef %>%
       filter(service %in% thermal_services) %>%
       rename(thermal.building.service.input = service) %>%
-      repeat_add_columns(tibble(group=unique(L144.income_shares$group))) %>%
+      repeat_add_columns(tibble(group=unique(L106.income_shares$gcam.consumer))) %>%
       mutate(gcam.consumer = paste0(gcam.consumer,"_",group)) %>%
       mutate(year =MODEL_FINAL_BASE_YEAR) %>%
       left_join_error_no_match(L244.ThermalBaseService, by = c("gcam.consumer", "nodeInput", "building.node.input", "thermal.building.service.input", "region","year")) %>%
@@ -2362,7 +2276,7 @@ module_energy_L244.building_det <- function(command, ...) {
     # Satiation level
     L244.GenericServiceSatiation<-L244.GenericServiceSatiation %>%
       filter(grepl("resid",gcam.consumer)) %>%
-      repeat_add_columns(tibble(group=unique(L144.income_shares$group))) %>%
+      repeat_add_columns(tibble(group=unique(L106.income_shares$gcam.consumer))) %>%
       unite(gcam.consumer,c("gcam.consumer","group"),sep = "_") %>%
       bind_rows(L244.GenericServiceSatiation %>%
                   filter(grepl("comm",gcam.consumer))) %>%
@@ -2372,7 +2286,7 @@ module_energy_L244.building_det <- function(command, ...) {
     # per unit floorspace in the final calibration year. This (increased slightly) is then the minimum satiation level that needs to be read in.
     L244.GenericServiceSatiation_SSPs <- L244.GenericServiceSatiation_SSPs %>%
       filter(grepl("resid",gcam.consumer)) %>%
-      repeat_add_columns(tibble(group=unique(L144.income_shares$group))) %>%
+      repeat_add_columns(tibble(group=unique(L106.income_shares$gcam.consumer))) %>%
       unite(gcam.consumer,c("gcam.consumer","group"),sep = "_") %>%
       bind_rows(L244.GenericServiceSatiation_SSPs %>%
                   filter(grepl("comm",gcam.consumer))) %>%
@@ -2399,7 +2313,7 @@ module_energy_L244.building_det <- function(command, ...) {
 
     L244.ThermalServiceSatiation<-L244.ThermalServiceSatiation %>%
       filter(grepl("resid",gcam.consumer)) %>%
-      repeat_add_columns(tibble(group=unique(L144.income_shares$group))) %>%
+      repeat_add_columns(tibble(group=unique(L106.income_shares$gcam.consumer))) %>%
       unite(gcam.consumer,c("gcam.consumer","group"),sep = "_") %>%
       bind_rows(L244.ThermalServiceSatiation %>%
                   filter(grepl("comm",gcam.consumer))) %>%
@@ -2435,14 +2349,14 @@ module_energy_L244.building_det <- function(command, ...) {
 
     L244.ShellConductance_bld_noadj<-L244.ShellConductance_bld %>%
       filter(grepl("resid",gcam.consumer)) %>%
-      repeat_add_columns(tibble(group=unique(L144.income_shares$group))) %>%
+      repeat_add_columns(tibble(group=unique(L106.income_shares$gcam.consumer))) %>%
       unite(gcam.consumer,c("gcam.consumer","group"),sep = "_") %>%
       bind_rows(L244.ShellConductance_bld %>%
                   filter(grepl("comm",gcam.consumer))) %>%
       filter(gcam.consumer == "comm") %>%
       bind_rows(L244.ShellConductance_bld %>%
                   filter(grepl("resid",gcam.consumer)) %>%
-                  repeat_add_columns(tibble(group=unique(L144.income_shares$group))) %>%
+                  repeat_add_columns(tibble(group=unique(L106.income_shares$gcam.consumer))) %>%
                   unite(gcam.consumer,c("gcam.consumer","group"),sep = "_") %>%
                   bind_rows(L244.ShellConductance_bld %>%
                               filter(grepl("comm",gcam.consumer))) %>%
@@ -2450,7 +2364,7 @@ module_energy_L244.building_det <- function(command, ...) {
 
     L244.ShellConductance_bld<-L244.ShellConductance_bld %>%
       filter(grepl("resid",gcam.consumer)) %>%
-      repeat_add_columns(tibble(group=unique(L144.income_shares$group))) %>%
+      repeat_add_columns(tibble(group=unique(L106.income_shares$gcam.consumer))) %>%
       unite(gcam.consumer,c("gcam.consumer","group"),sep = "_") %>%
       bind_rows(L244.ShellConductance_bld %>%
                   filter(grepl("comm",gcam.consumer))) %>%
@@ -2793,7 +2707,7 @@ module_energy_L244.building_det <- function(command, ...) {
       add_legacy_name("L244.GenericServiceImpedance") %>%
       add_precursors("L144.base_service_EJ_serv", "energy/calibrated_techs_bld_det", "common/GCAM_region_names",
                      "L144.flsp_bm2_R_res_Yh", "L144.flsp_bm2_R_comm_Yh", "energy/A44.demand_satiation_mult",
-                     "L102.pcgdp_thous90USD_Scen_R_Y", "L101.Pop_thous_R_Yh","L144.prices_bld","socioeconomics/income_shares") ->
+                     "L102.pcgdp_thous90USD_Scen_R_Y", "L101.Pop_thous_R_Yh","L144.prices_bld", "L106.income_distributions") ->
       L244.GenericServiceImpedance
 
     L244.ThermalServiceImpedance %>%
@@ -2803,7 +2717,7 @@ module_energy_L244.building_det <- function(command, ...) {
       add_legacy_name("L244.ThermalServiceImpedance") %>%
       add_precursors("L144.base_service_EJ_serv", "energy/calibrated_techs_bld_det", "common/GCAM_region_names",
                      "L144.flsp_bm2_R_res_Yh", "L144.flsp_bm2_R_comm_Yh", "energy/A44.demand_satiation_mult",
-                     "L102.pcgdp_thous90USD_Scen_R_Y", "L101.Pop_thous_R_Yh","L144.prices_bld","socioeconomics/income_shares",
+                     "L102.pcgdp_thous90USD_Scen_R_Y", "L101.Pop_thous_R_Yh","L144.prices_bld", "L106.income_distributions",
                      "L143.HDDCDD_scen_R_Y","L144.shell_eff_R_Y", "L144.internal_gains") ->
       L244.ThermalServiceImpedance
 
@@ -2814,7 +2728,7 @@ module_energy_L244.building_det <- function(command, ...) {
       add_legacy_name("L244.GenericServiceImpedance") %>%
       add_precursors("L144.base_service_EJ_serv", "energy/calibrated_techs_bld_det", "common/GCAM_region_names",
                      "L144.flsp_bm2_R_res_Yh", "L144.flsp_bm2_R_comm_Yh", "energy/A44.demand_satiation_mult",
-                     "L102.pcgdp_thous90USD_Scen_R_Y", "L101.Pop_thous_R_Yh","L144.prices_bld","socioeconomics/income_shares") ->
+                     "L102.pcgdp_thous90USD_Scen_R_Y", "L101.Pop_thous_R_Yh","L144.prices_bld", "L106.income_distributions") ->
       L244.GenericServiceAdder
 
     L244.ThermalServiceAdder %>%
@@ -2824,7 +2738,7 @@ module_energy_L244.building_det <- function(command, ...) {
       add_legacy_name("L244.ThermalServiceAdder") %>%
       add_precursors("L144.base_service_EJ_serv", "energy/calibrated_techs_bld_det", "common/GCAM_region_names",
                      "L144.flsp_bm2_R_res_Yh", "L144.flsp_bm2_R_comm_Yh", "energy/A44.demand_satiation_mult",
-                     "L102.pcgdp_thous90USD_Scen_R_Y", "L101.Pop_thous_R_Yh","L144.prices_bld","socioeconomics/income_shares",
+                     "L102.pcgdp_thous90USD_Scen_R_Y", "L101.Pop_thous_R_Yh","L144.prices_bld", "L106.income_distributions",
                      "L143.HDDCDD_scen_R_Y","L144.shell_eff_R_Y", "L144.internal_gains") ->
       L244.ThermalServiceAdder
 
@@ -3117,8 +3031,7 @@ module_energy_L244.building_det <- function(command, ...) {
       L244.ThermalBaseDens
 
 
-    return_data(L244.SubregionalShares, L244.SubregionalShares_SSP1,L244.SubregionalShares_SSP2,L244.SubregionalShares_SSP3,
-                L244.SubregionalShares_SSP4,L244.SubregionalShares_SSP5,
+    return_data(L244.SubregionalShares,
                 L244.PriceExp_IntGains, L244.Floorspace, L244.DemandFunction_serv, L244.DemandFunction_flsp,
                 L244.Satiation_flsp, L244.SatiationAdder, L244.ThermalBaseService, L244.GenericBaseService, L244.ThermalServiceSatiation,
                 L244.GenericServiceSatiation, L244.Intgains_scalar, L244.ShellConductance_bld,
