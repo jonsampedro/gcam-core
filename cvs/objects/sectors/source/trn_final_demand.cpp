@@ -109,6 +109,8 @@ void TrnFinalDemand::toDebugXML( const int aPeriod,
     XMLWriteElement(mSubregionalPopulation[aPeriod], "subregional-population", aOut, aTabs);
     XMLWriteElement(mSubregionalIncome[aPeriod], "subregional-income", aOut, aTabs);
     XMLWriteElement(mBiasAdderTrn[aPeriod], "bias-adder", aOut, aTabs);
+    XMLWriteElement(mIncomeElasticity[aPeriod], "bias-adder", aOut, aTabs);
+    XMLWriteElement(mPriceElasticity[aPeriod], "bias-adder", aOut, aTabs);
     
     XMLWriteElement(mServiceDemands[aPeriod], "service", aOut, aTabs);
 
@@ -200,11 +202,21 @@ double TrnFinalDemand::calcFinalDemand(const string& aRegionName,
 
         // Price
     const double PriceAdjustParam = mBasePriceTrn - getPricePaid(aRegionName, scenario->getModeltime()->getFinalCalibrationPeriod());
+
     double price_adj = getPricePaid(aRegionName, aPeriod);
     double price = price_adj + PriceAdjustParam;
 
+    // Lag Price
+    double lag_price = getPricePaid(aRegionName, aPeriod - 1) + PriceAdjustParam;
+
+    // Price Ratio
+    double PriceRatio = price / lag_price;
+
     //Bias Adder
     double TrnBiasAdder = mBiasAdderTrn[aPeriod];
+
+    // Price Elasticity
+    double Prelast = mPriceElasticity[aPeriod];
 
 
     // Save as an object for debugging
@@ -213,28 +225,11 @@ double TrnFinalDemand::calcFinalDemand(const string& aRegionName,
     mBiasAdderTrn[aPeriod] = TrnBiasAdder;
 
         // Function
-    //mServiceDemands[aPeriod] = mTrnCoef * subregionalIncome * price * subregionalPopulation;
 
-    mServiceDemands[aPeriod] = (mTrnCoef * subregionalIncome * price * subregionalPopulation) + TrnBiasAdder;
-
-    }
-
-
-
-    /*!// Adjust for negative demands
-    if (mServiceDemands[aPeriod] < mBaseService[scenario->getModeltime()->getFinalCalibrationPeriod()]) {
-
-        mServiceDemands[aPeriod] = mBaseService[scenario->getModeltime()->getFinalCalibrationPeriod()];
+    mServiceDemands[aPeriod] = (mTrnCoef * subregionalIncome * pow(PriceRatio, Prelast) * subregionalPopulation) + TrnBiasAdder;
 
     }
 
-    else {
-
-        mServiceDemands[aPeriod] = mServiceDemands[aPeriod];
-
-
-    }
-    */
 
     return mServiceDemands[aPeriod];
 
