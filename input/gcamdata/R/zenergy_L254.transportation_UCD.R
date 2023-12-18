@@ -1188,18 +1188,30 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
                                  mutate(trn.final.demand = sub("_([^_]*)$", "_split_\\1", trn.final.demand)) %>%
                                  tidyr::separate(trn.final.demand, into = c("trn.final.demand", "group"), sep = "_split_", extra = "merge", fill = "right"),
                                by = c("region", "trn.final.demand", "group", "sce")) %>%
+      # add IncElast
+      left_join_error_no_match(L254.IncomeElasticity %>%
+                                 select(-year) %>%
+                                 distinct() %>%
+                                 mutate(trn.final.demand = sub("_([^_]*)$", "_split_\\1", trn.final.demand)) %>%
+                                 tidyr::separate(trn.final.demand, into = c("trn.final.demand", "group"), sep = "_split_", extra = "merge", fill = "right"),
+                               by = c("region", "trn.final.demand", "group", "sce")) %>%
       # add pop
       left_join_error_no_match(L101.Pop_thous_R_Yh, by = c("year", "GCAM_region_ID")) %>%
       rename(pop = value) %>%
       mutate(pop = pop * 1E3 * (1 / length(income_groups))) %>%
-      # calculate lag prices
+      # calculate lag prices, incomes and services
       group_by(scenario, region, GCAM_region_ID, trn.final.demand, group) %>%
-      mutate(lag_price = lag(price)) %>%
-      mutate(lag_price = if_else(is.na(lag_price), approx_fun(year, lag_price, rule = 2), lag_price)) %>%
+      mutate(lag_price = lag(price),
+             lag_pcGDP_thous90USD = lag(pcGDP_thous90USD),
+             lag_base.service = lag(base.service)) %>%
+      mutate(lag_price = if_else(is.na(lag_price), approx_fun(year, lag_price, rule = 2), lag_price),
+             lag_pcGDP_thous90USD = if_else(is.na(lag_pcGDP_thous90USD), approx_fun(year, lag_pcGDP_thous90USD, rule = 2), lag_pcGDP_thous90USD),
+             lag_base.service = if_else(is.na(lag_base.service), approx_fun(year, lag_base.service, rule = 2), lag_base.service)) %>%
       ungroup() %>%
       rename(energy.final.demand = trn.final.demand) %>%
       # Per capita income needs to be set to $1975 to be conistsent with the price
-      mutate(pcGDP_thous75USD = pcGDP_thous90USD * gcamdata::gdp_deflator(1975,1990))
+      mutate(pcGDP_thous75USD = pcGDP_thous90USD * gcamdata::gdp_deflator(1975,1990),
+             lag_pcGDP_thous75USD = lag_pcGDP_thous90USD * gcamdata::gdp_deflator(1975,1990))
 
     #-----------------------------------------
 
@@ -1208,7 +1220,7 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
 
     fit_pass_fn <- function(df) {
 
-      formula <- "base.service ~ a * pcGDP_thous75USD * price * pop"
+      formula <- "base.service ~ a * pcGDP_thous75USD * ((price / lag_price) ^ price.elasticity) * pop"
       start.value <- c(a = 1)
 
       fit_pass_df <- nls(formula, df, start.value)
@@ -1237,7 +1249,7 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
 
     L254.Trn.bias.adder_pre <- trn_data_fin %>%
       filter(year == MODEL_FINAL_BASE_YEAR) %>%
-      mutate(est.base.service = coef_trn * pcGDP_thous75USD * price * pop) %>%
+      mutate(est.base.service = coef_trn * pcGDP_thous75USD * ((price / lag_price) ^ price.elasticity) * pop) %>%
       mutate(bias.adder = base.service - est.base.service) %>%
       unite(energy.final.demand, c("energy.final.demand", "group"), sep = "_") %>%
       rename(trn.final.demand = energy.final.demand) %>%
@@ -1246,7 +1258,7 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
 
     L254.Trn.bias.adder_fut <- trn_data_fin %>%
       filter(year == MODEL_FINAL_BASE_YEAR) %>%
-      mutate(est.base.service = coef_trn * pcGDP_thous75USD * price * pop) %>%
+      mutate(est.base.service = coef_trn * pcGDP_thous75USD * ((price / lag_price) ^ price.elasticity) * pop) %>%
       group_by(sce, region, year, energy.final.demand) %>%
       summarise(base.service = sum(base.service),
                 est.base.service = sum(est.base.service)) %>%

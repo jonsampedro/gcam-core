@@ -53,7 +53,7 @@ module_energy_building_SSP_xml <- function(command, ...) {
           add_xml_data(L244.Satiation_flsp_SSP, "Satiation_flsp") %>%
           add_xml_data(L244.SatiationAdder_SSP, "SatiationAdder") %>%
           add_xml_data(L244.Satiation_impedance_SSP, "SatiationImpedance") %>%
-          add_precursors(Satiation_flsp, SatiationAdder,Satiation_impedance,Subregional_shares) -> xml_obj
+          add_precursors(Satiation_flsp, SatiationAdder,Satiation_impedance) -> xml_obj
 
       } else {
         create_xml(xmlfn) %>%
