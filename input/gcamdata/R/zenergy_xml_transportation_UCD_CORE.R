@@ -55,6 +55,7 @@ module_energy_transportation_UCD_CORE_xml <- function(command, ...) {
              "L254.IncomeElasticity_fr",
              "L254.demandFn_trn_coef",
              "L254.Trn.bias.adder",
+             "L254.tranSubsectorpcGDP",
              "L254.CalPrice_trn"))
   } else if(command == driver.DECLARE_OUTPUTS) {
     #xml_files<- c("transportation_UCD_CORE.xml","transportation_UCD_SSP1.xml","transportation_UCD_SSP3.xml","transportation_UCD_SSP5.xml","transportation_UCD_highEV.xml")
@@ -86,6 +87,7 @@ module_energy_transportation_UCD_CORE_xml <- function(command, ...) {
     L254.tranSubsectorSpeed_nonmotor <- get_data(all_data, "L254.tranSubsectorSpeed_nonmotor")
     L254.tranSubsectorVOTT <- get_data(all_data, "L254.tranSubsectorVOTT")
     L254.tranSubsectorFuelPref <- get_data(all_data, "L254.tranSubsectorFuelPref")
+    L254.tranSubsectorpcGDP <- get_data(all_data, "L254.tranSubsectorpcGDP")
 
     L254.StubTech_passthru <- get_data(all_data, "L254.StubTech_passthru")
     L254.StubTech_nonmotor <- get_data(all_data, "L254.StubTech_nonmotor")
@@ -142,6 +144,7 @@ module_energy_transportation_UCD_CORE_xml <- function(command, ...) {
       #VOTT and Demand data
       L254.tranSubsectorSpeed_passthru_SSP <- L254.tranSubsectorSpeed_passthru %>% filter(sce==i)
       L254.tranSubsectorVOTT_SSP<- L254.tranSubsectorVOTT %>% filter(sce==i)
+      L254.tranSubsectorpcGDP_SSP<- L254.tranSubsectorpcGDP %>% filter(sce==i)
       L254.tranSubsectorFuelPref_SSP<-L254.tranSubsectorFuelPref %>% filter(sce==i)
       L254.PerCapitaBased_pass_SSP<- L254.PerCapitaBased_pass %>% filter(sce==i)
       L254.PerCapitaBased_fr_SSP<- L254.PerCapitaBased_fr %>% filter(sce==i)
@@ -152,6 +155,7 @@ module_energy_transportation_UCD_CORE_xml <- function(command, ...) {
       }else{
         L254.tranSubsectorSpeed_passthru_SSP <- L254.tranSubsectorSpeed_passthru %>% filter(sce=="CORE")
         L254.tranSubsectorVOTT_SSP<- L254.tranSubsectorVOTT %>% filter(sce=="CORE")
+        L254.tranSubsectorpcGDP_SSP<- L254.tranSubsectorpcGDP %>% filter(sce=="CORE")
         L254.tranSubsectorFuelPref_SSP<-L254.tranSubsectorFuelPref %>% filter(sce=="CORE")
         L254.PerCapitaBased_pass_SSP <- L254.PerCapitaBased_pass %>% filter(sce=="CORE")
         L254.PerCapitaBased_fr_SSP <- L254.PerCapitaBased_fr %>% filter(sce=="CORE")
@@ -225,6 +229,7 @@ module_energy_transportation_UCD_CORE_xml <- function(command, ...) {
         add_xml_data(L254.tranSubsectorSpeed_noVOTT, "tranSubsectorSpeed") %>%
         add_xml_data(L254.tranSubsectorSpeed_nonmotor, "tranSubsectorSpeed") %>%
         add_xml_data(L254.tranSubsectorVOTT_SSP, "tranSubsectorVOTT") %>%
+        add_xml_data(L254.tranSubsectorpcGDP_SSP, "tranSubsectorpcGDP") %>%
         add_xml_data(L254.tranSubsectorFuelPref_SSP, "tranSubsectorFuelPref") %>%
         add_xml_data(L254.StubTranTech_SSP, "StubTranTech") %>%
         add_xml_data(L254.StubTech_passthru_SSP, "StubTranTech") %>%
@@ -285,6 +290,7 @@ module_energy_transportation_UCD_CORE_xml <- function(command, ...) {
                        "L254.demandFn_trn_coef",
                        "L244.SubregionalShares_trn",
                        "L254.Trn.bias.adder",
+                       "L254.tranSubsectorpcGDP",
                        "L254.CalPrice_trn")  %>%
                         assign(xml_name, ., envir = curr_env)
 

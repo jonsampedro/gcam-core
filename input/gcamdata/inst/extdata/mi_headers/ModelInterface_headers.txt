@@ -214,6 +214,8 @@ tranSubsectorInterpTo, world/+{name}region, region/+{name}supplysector, supplyse
 
 tranSubsectorSpeed, world/+{name}region, region/+{name}supplysector, supplysector/+{name}tranSubsector, tranSubsector/+{year}speed, tranSubsector/+speed, scenario/world, scenario
 
+tranSubsectorpcGDP, world/+{name}region, region/+{name}supplysector, supplysector/+{name}tranSubsector, tranSubsector/+{year}subregional-income-trn, tranSubsector/+subregional-income-trn, scenario/world, scenario
+
 tranSubsectorVOTT, world/+{name}region, region/+{name}supplysector, supplysector/+{name}tranSubsector, tranSubsector/+addTimeValue, tranSubsector/+{year;fillout=1}time-value-multiplier, tranSubsector/+time-value-multiplier, scenario/world, scenario
 
 tranSubsectorFuelPref, world/+{name}region, region/+{name}supplysector, supplysector/+{name}tranSubsector, tranSubsector/+{year;fillout=1}fuelprefElasticity, tranSubsector/+fuelprefElasticity, scenario/world, scenario

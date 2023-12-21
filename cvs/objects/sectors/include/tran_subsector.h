@@ -95,6 +95,9 @@ protected:
         //! Population Density Elasticity of mode
         DEFINE_VARIABLE( ARRAY, "popDenseElasticity", mPopDenseElasticity, objects::PeriodVector<double> ),
 
+        //! Subregional income
+        DEFINE_VARIABLE(ARRAY, "subregional-income-trn", mSubregionalIncomeTrn, objects::PeriodVector<Value>),
+
         //! Time value multiplier
         DEFINE_VARIABLE( ARRAY, "time-value-multiplier", mTimeValueMult, objects::PeriodVector<Value> ),
 

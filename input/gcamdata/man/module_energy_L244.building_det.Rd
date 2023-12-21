@@ -14,8 +14,7 @@ module_energy_L244.building_det(command, ...)
 \value{
 Depends on \code{command}: either a vector of required inputs,
 a vector of output names, or (if \code{command} is "MAKE") all
-the generated outputs: \code{L244.SubregionalShares}, \code{L244.SubregionalShares_SSP1}, \code{L244.SubregionalShares_SSP2},\code{L244.SubregionalShares_SSP3},
-\code{L244.SubregionalShares_SSP4},\code{L244.SubregionalShares_SSP5},
+the generated outputs: \code{L244.SubregionalShares}
 \code{L244.PriceExp_IntGains}, \code{L244.Floorspace}, \code{L244.DemandFunction_serv},
 \code{L244.DemandFunction_flsp}, \code{L244.Satiation_flsp}, \code{L244.SatiationAdder}, \code{L244.ThermalBaseService}, \code{L244.GenericBaseService},
 \code{L244.ThermalServiceSatiation}, \code{L244.GenericServiceSatiation}, \code{L244.Intgains_scalar}, \code{L244.ShellConductance_bld},

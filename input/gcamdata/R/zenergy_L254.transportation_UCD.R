@@ -19,7 +19,7 @@
 #' \code{L254.StubTranTechCost}, \code{L254.StubTranTechCoef}, \code{L254.StubTechCalInput_passthru},
 #' \code{L254.StubTechProd_nonmotor}, \code{L254.PerCapitaBased_pass}, \code{L254.PerCapitaBased_fr}, \code{L254.PriceElasticity_pass}, \code{L254.PriceElasticity_fr},
 #' \code{L254.IncomeElasticity_pass},\code{L254.IncomeElasticity_fr},  \code{L254.BaseService_pass}, \code{L254.BaseService_fr},
-#' \code{L244.SubregionalShares_trn} ,\code{L254.demandFn_trn_coef}, \code{L244.TrnShares}, \code{L254.CalPrice_trn}, \code{L254.Trn.bias.adder}.
+#' \code{L244.SubregionalShares_trn} ,\code{L254.demandFn_trn_coef}, \code{L244.TrnShares}, \code{L254.CalPrice_trn}, \code{L254.Trn.bias.adder}, \code{L254.tranSubsectorpcGDP}.
 #'  The corresponding file in the
 #' original data system was \code{L254.transportation_UCD.R} (energy level2).
 #' @details Due to the asymmetrical nature of the transportation sectors in the various regions, we can't simply write
@@ -66,6 +66,7 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
              "L154.out_mpkm_R_trn_nonmotor_Yh",
              "L106.income_distributions",
              "L101.Pop_thous_R_Yh",
+             "L101.Pop_thous_Scen_R_Yfut",
              "L102.pcgdp_thous90USD_Scen_R_Y",
              FILE = "energy/A54.CalPrice_trn",
              "L244.SubregionalShares"))
@@ -113,7 +114,8 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
              "L244.SubregionalShares_trn",
              "L254.demandFn_trn_coef",
              "L254.Trn.bias.adder",
-             "L254.CalPrice_trn"))
+             "L254.CalPrice_trn",
+             "L254.tranSubsectorpcGDP"))
   } else if(command == driver.MAKE) {
 
     all_data <- list(...)[[1]]
@@ -207,6 +209,7 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
 
     # Check if pop is needed: Otherwise delete it!!!
     L101.Pop_thous_R_Yh <- get_data(all_data, "L101.Pop_thous_R_Yh",strip_attributes = TRUE)
+    L101.Pop_thous_Scen_R_Yfut <- get_data(all_data, "L101.Pop_thous_Scen_R_Yfut",strip_attributes = TRUE)
     L102.pcgdp_thous90USD_Scen_R_Y <- get_data(all_data, "L102.pcgdp_thous90USD_Scen_R_Y",strip_attributes = TRUE)
 
 
@@ -251,6 +254,31 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
       mutate(sce = gsub("g", "", scenario)) %>%
       left_join_error_no_match(L106.income_shares_allhist %>%
                                  rename(group = gcam.consumer), by = c("region", "year", "group")) %>%
+      mutate(gdp_gr = gdp * subregional.income.share,
+             gdp_pc = (gdp_gr / 1E3) / (pop_thous * 1E3)) %>%
+      select(-pcGDP_thous90USD) %>%
+      rename(pcGDP_thous90USD = gdp_pc) %>%
+      select(scenario, GCAM_region_ID, region, year, group, pcGDP_thous90USD)
+
+    # All years
+    L102.pcgdp_thous90USD_Scen_R_Y_gr_allYears <- L102.pcgdp_thous90USD_Scen_R_Y %>%
+      filter(scenario == socioeconomics.BASE_GDP_SCENARIO) %>%
+      left_join_error_no_match(GCAM_region_names, by = "GCAM_region_ID") %>%
+      rename(pcGDP_thous90USD = value) %>%
+      left_join(L101.Pop_thous_R_Yh, by=c("GCAM_region_ID","year")) %>%
+      left_join(L101.Pop_thous_Scen_R_Yfut %>%
+                  filter(scenario == socioeconomics.BASE_GDP_SCENARIO),
+                 by = c("scenario","GCAM_region_ID","year")) %>%
+      mutate(value = if_else(year <= MODEL_FINAL_BASE_YEAR, value.x, value.y)) %>%
+      select(-value.x, -value.y) %>%
+      rename(pop_thous = value) %>%
+      mutate(gdp = pcGDP_thous90USD * 1E3 * pop_thous * 1E3) %>%
+      repeat_add_columns(tibble(group = unique(income_groups))) %>%
+      mutate(pop_thous = pop_thous * (1 / length(unique(income_groups)))) %>%
+      mutate(sce = gsub("g", "", scenario)) %>%
+      filter(year %in% MODEL_YEARS) %>%
+      left_join_error_no_match(L106.income_shares %>%
+                                 rename(group = gcam.consumer), by = c("year", "region", "group")) %>%
       mutate(gdp_gr = gdp * subregional.income.share,
              gdp_pc = (gdp_gr / 1E3) / (pop_thous * 1E3)) %>%
       select(-pcGDP_thous90USD) %>%
@@ -1312,6 +1340,53 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
     L254.BaseService_fr <- L254.BaseService %>% filter(grepl("freight", trn.final.demand) | grepl("ship", trn.final.demand)) %>%
       rename(energy.final.demand = trn.final.demand)
 
+    #--------------------------------------------------------
+    # Per capita GDP needs to be writen to supplysector nodes to capture the dynamic that wealthier groups demand faster modes/subsectors.
+    L254.tranSubsectorpcGDP <-L254.tranSubsectorVOTT %>%
+      filter(sce == "CORE") %>%
+      select(-sce, -year.fillout) %>%
+      mutate(supplysector = sub("_([^_]*)$", "_split_\\1", supplysector)) %>%
+      tidyr::separate(supplysector, into = c("supplysector", "group"), sep = "_split_", extra = "merge", fill = "right") %>%
+      repeat_add_columns(tibble(year = MODEL_YEARS)) %>%
+      left_join_error_no_match(L102.pcgdp_thous90USD_Scen_R_Y_gr_allYears %>% filter(scenario == socioeconomics.BASE_GDP_SCENARIO),
+                               by = c("region", "group", "year")) %>%
+      unite(supplysector, c("supplysector", group), sep = "_") %>%
+      mutate(sce = "CORE") %>%
+      select(LEVEL2_DATA_NAMES[["tranSubsector"]], year, subregional.income.trn = pcGDP_thous90USD, sce)
+
+    #--------------------------------------------------------
+    # Adjustment of non-energy cost to reflect that wealthier groups invest more in EV
+    # We apply a simple change to the costs assuming a variation of +-20% for the different deciles
+    # Needs to be adjusted with alternative disaggregations of consumers
+
+    # Cost difference/envelop
+    r <- 0.05
+
+    # Filter the sector/modes to differentiate the costs:
+    L254.StubTranTechCost_filter <- L254.StubTranTechCost %>%
+      filter(grepl("trn_pass", supplysector),
+             grepl("Car", tranSubsector) | grepl("2W", tranSubsector),
+             grepl("BEV", stub.technology) | grepl("FCEV", stub.technology) | grepl("Hybrid Liquids", stub.technology)) %>%
+      mutate(supplysector = gsub("d10", "dx", supplysector)) %>%
+      mutate(input.cost = if_else(grepl("d4", supplysector), input.cost  * (1 + r), input.cost),
+           input.cost = if_else(grepl("d6", supplysector), input.cost * (1 - r), input.cost ),
+           input.cost = if_else(grepl("d3", supplysector), input.cost * (1 + 2 * r), input.cost),
+           input.cost = if_else(grepl("d7", supplysector), input.cost * (1 - 2 * r), input.cost),
+           input.cost = if_else(grepl("d2", supplysector), input.cost * (1 + 3 * r), input.cost),
+           input.cost = if_else(grepl("d8", supplysector), input.cost * (1 - 3 * r), input.cost),
+           input.cost = if_else(grepl("d1", supplysector), input.cost * (1 + 4 * r), input.cost),
+           input.cost = if_else(grepl("d9", supplysector), input.cost * (1 - 4 * r), input.cost),
+           input.cost = if_else(grepl("dx", supplysector), input.cost * (1 - 5 * r), input.cost)) %>%
+    mutate(supplysector = gsub("dx", "d10", supplysector))
+
+    L254.StubTranTechCost <- L254.StubTranTechCost %>%
+      left_join(L254.StubTranTechCost_filter, by = c("region", "supplysector", "tranSubsector", "stub.technology", "year", "minicam.non.energy.input", "sce")) %>%
+      mutate(input.cost = if_else(is.na(input.cost.y == T), input.cost.x, input.cost.y)) %>%
+      select(LEVEL2_DATA_NAMES[["StubTranTechCost"]], sce)
+
+
+
+
     # ===================================================
 
     L254.Supplysector_trn %>%
@@ -1681,7 +1756,7 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
       add_precursors("common/GCAM_region_names", "energy/A54.sector", "energy/mappings/UCD_techs", "energy/mappings/UCD_techs_revised", "energy/mappings/UCD_size_class_revisions",
                      "L154.out_mpkm_R_trn_nonmotor_Yh", "L154.intensity_MJvkm_R_trn_m_sz_tech_F_Y",
                      "L154.loadfactor_R_trn_m_sz_tech_F_Y", "L154.in_EJ_R_trn_m_sz_tech_F_Yh",
-                     "energy/A54.CalPrice_trn", "L106.income_distributions", "L101.Pop_thous_R_Yh", "L102.pcgdp_thous90USD_Scen_R_Y") ->
+                     "energy/A54.CalPrice_trn", "L106.income_distributions", "L101.Pop_thous_R_Yh","L101.Pop_thous_Scen_R_Yfut", "L102.pcgdp_thous90USD_Scen_R_Y") ->
       L254.BaseService_fr
 
 
@@ -1726,6 +1801,17 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
       add_precursors("common/GCAM_region_names", "L102.pcgdp_thous90USD_Scen_R_Y") ->
       L254.Trn.bias.adder
 
+    L254.tranSubsectorpcGDP %>%
+      add_title("Bias adder for the trn-function calibration") %>%
+      add_units("Pass-km") %>%
+      add_comments("estimated") %>%
+      add_legacy_name("L254.tranSubsectorpcGDP") %>%
+      add_precursors("common/GCAM_region_names", "L106.income_distributions",
+                     "L101.Pop_thous_R_Yh","L101.Pop_thous_Scen_R_Yfut", "L102.pcgdp_thous90USD_Scen_R_Y") ->
+      L254.tranSubsectorpcGDP
+
+
+
 
 
     return_data(L254.Supplysector_trn, L254.FinalEnergyKeyword_trn, L254.tranSubsectorLogit,
@@ -1740,7 +1826,7 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
                 L254.StubTechProd_nonmotor, L254.PerCapitaBased_pass, L254.PerCapitaBased_fr, L254.PriceElasticity_pass, L254.PriceElasticity_fr,
                 L254.IncomeElasticity_pass, L254.IncomeElasticity_fr, L254.BaseService_pass, L254.BaseService_fr,
                 L244.TrnShares, L244.SubregionalShares_trn, L254.demandFn_trn_coef, L254.CalPrice_trn, L254.StubTechTrackCapital,
-                L254.Trn.bias.adder)
+                L254.Trn.bias.adder, L254.tranSubsectorpcGDP)
 
 
   } else {
