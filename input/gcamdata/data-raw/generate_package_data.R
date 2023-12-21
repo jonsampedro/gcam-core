@@ -4,7 +4,7 @@ library(devtools)
 # We could potentially use drake to speed up the process of updating the package
 # data which otherwise requires multiple runs of driver.  However, given drake
 # is optional we default to not use it.
-USE_DRIVER_DRAKE <- FALSE
+USE_DRIVER_DRAKE <- TRUE
 
 # Note: the methods below explicitly name XML tags as expected by GCAM and/or
 # the model interface headers thus will need to be maintained to be consistent.
@@ -117,6 +117,7 @@ generate_level2_data_names <- function() {
   level2_data_names[["tranSubsectorShrwtFllt"]] <- c("region", "supplysector", "tranSubsector", "year.fillout", "share.weight")
   level2_data_names[["tranSubsectorSpeed"]] <- c("region", "supplysector", "tranSubsector", "year", "speed")
   level2_data_names[["tranSubsectorVOTT"]] <- c("region", "supplysector", "tranSubsector", "addTimeValue", "year.fillout", "time.value.multiplier")
+  level2_data_names[["tranSubsectorpcGDP"]] <- c("region", "supplysector", "tranSubsector", "year", "subregional.income.trn")
   level2_data_names[["tranSubsector_absolute-cost-logit"]] <- c("region", "supplysector", "tranSubsector")
   level2_data_names[["tranSubsector_relative-cost-logit"]] <- c("region", "supplysector", "tranSubsector")
   level2_data_names[["DeleteSubsector"]] <- level2_data_names[["Subsector"]]
