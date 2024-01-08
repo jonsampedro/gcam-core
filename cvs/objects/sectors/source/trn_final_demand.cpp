@@ -109,8 +109,8 @@ void TrnFinalDemand::toDebugXML( const int aPeriod,
     XMLWriteElement(mSubregionalPopulation[aPeriod], "subregional-population", aOut, aTabs);
     XMLWriteElement(mSubregionalIncome[aPeriod], "subregional-income", aOut, aTabs);
     XMLWriteElement(mBiasAdderTrn[aPeriod], "bias-adder", aOut, aTabs);
-    XMLWriteElement(mIncomeElasticity[aPeriod], "bias-adder", aOut, aTabs);
-    XMLWriteElement(mPriceElasticity[aPeriod], "bias-adder", aOut, aTabs);
+    XMLWriteElement(mIncomeElasticity[aPeriod], "income-elasticity", aOut, aTabs);
+    XMLWriteElement(mPriceElasticity[aPeriod], "price-elasticity", aOut, aTabs);
     
     XMLWriteElement(mServiceDemands[aPeriod], "service", aOut, aTabs);
 
