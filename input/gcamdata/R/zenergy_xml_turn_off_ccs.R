@@ -51,7 +51,8 @@ module_energy_turn_off_ccs_xml <- function(command, ...) {
       rename(supplysector = sector.name,
              subsector = subsector.name,
              stub.technology = technology) %>%
-      full_join(select(GCAM_region_names, region), by = character())
+      repeat_add_columns(tibble(region = unique(GCAM_region_names$region)))
+      #full_join(select(GCAM_region_names, region), by = character())
 
     # Set share weights to 0
     CCS_Techs %>%
