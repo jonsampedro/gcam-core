@@ -1157,7 +1157,15 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
       left_join_error_no_match(get_data(all_data, "energy/A54.globaltech_nonmotor",strip_attributes = TRUE), by = c("mode" = "tranSubsector")) %>%
       rename(stub.technology = technology, tranSubsector = mode) %>%
       # There is no need to match shareweights to the calOutputValue because no region should ever have a 0 here
-      select(LEVEL2_DATA_NAMES[["StubTranTech"]], year, calOutputValue,sce)
+      select(LEVEL2_DATA_NAMES[["StubTranTech"]], year, calOutputValue,sce) %>%
+      repeat_add_columns(tibble(group = income_groups)) %>%
+      left_join_error_no_match(L154.trn_serv_shares %>%
+                                 filter(scenario == "CORE") %>%
+                                 select(-supplysector, -year, -scenario) %>%
+                                 rename(supplysector = energy.final.demand), by = c("region", "supplysector","group")) %>%
+      mutate(calOutputValue = calOutputValue * serv.share) %>%
+      select(-serv.share) %>%
+      unite(supplysector, c(supplysector, group), sep = "_")
 
 
     # L254.PerCapitaBase: per-capita based flag for transportation final demand
@@ -1186,10 +1194,7 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
     # L254.BaseService: Base-year service output of transportation final demand
     L254.BaseService <- L254.StubTranTechOutput %>%
       select(LEVEL2_DATA_NAMES[["StubTranTech"]], year, output,sce) %>%
-      bind_rows(
-        select(L254.StubTechProd_nonmotor, one_of(LEVEL2_DATA_NAMES[["StubTranTech"]]), year, calOutputValue,sce)) %>%
-      mutate(base.service = if_else(!is.na(output), output, calOutputValue)) %>%
-      select(-output, -calOutputValue) %>%
+      rename(base.service = output) %>%
       filter(grepl("pass", supplysector) | grepl("aviation", supplysector)) %>%
       repeat_add_columns(tibble(group = income_groups)) %>%
       left_join_error_no_match(L154.trn_serv_shares %>%
@@ -1199,6 +1204,8 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
       mutate(base.service = base.service * serv.share) %>%
       select(-serv.share) %>%
       unite(supplysector, c(supplysector, group), sep = "_") %>%
+      bind_rows(
+        select(L254.StubTechProd_nonmotor, one_of(LEVEL2_DATA_NAMES[["StubTranTech"]]), year, base.service = calOutputValue,sce)) %>%
       bind_rows(L254.StubTranTechOutput %>%
                   select(LEVEL2_DATA_NAMES[["StubTranTech"]], year, base.service = output, sce) %>%
                   filter(grepl("freight", supplysector) | grepl("ship", supplysector))) %>%
