@@ -839,6 +839,63 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
       select(LEVEL2_DATA_NAMES[["StubTranTechCalInput"]],sce) ->
       L254.StubTranTechCalInput # OUTPUT
 
+    #===========================================================
+
+    # Allocate energy across multiple groups using shares:
+    # TODO: change shares by mode/tech
+    # Extend shares to all passthrough sectors:
+
+    all_pass_sectors <- A54.globaltranTech_interp %>%
+      mutate(supplysector = sub("_([^_]*)$", "_split_\\1", supplysector)) %>%
+      tidyr::separate(supplysector, into = c("supplysector", "group"), sep = "_split_", extra = "merge", fill = "right") %>%
+      select(supplysector) %>%
+      distinct() %>%
+      filter(grepl("pass", supplysector)) %>%
+      pull()
+
+
+    L154.trn_serv_shares <- L154.trn_serv_shares %>%
+      filter(energy.final.demand == "trn_pass") %>%
+      select(-energy.final.demand) %>%
+      repeat_add_columns(tibble(energy.final.demand = all_pass_sectors)) %>%
+      bind_rows(L154.trn_serv_shares %>% filter(energy.final.demand == "trn_aviation_intl")) %>%
+      mutate(supplysector = paste0(energy.final.demand, "_", group))
+
+    # Create new shares for modes:
+    L154.trn_serv_shares_subsector <- A54.SharesModeTech_trn %>%
+      rename(supplysector = sector) %>%
+      mutate(supplysector = sub("_([^_]*)$", "_split_\\1", supplysector)) %>%
+      tidyr::separate(supplysector, into = c("supplysector", "group"), sep = "_split_", extra = "merge", fill = "right") %>%
+      # Try at subsector level
+      group_by(region, supplysector, subsector, group) %>%
+      summarise(value = sum(value)) %>%
+      ungroup() %>%
+      group_by(region, supplysector, subsector) %>%
+      mutate(value_tot_sub = sum(value)) %>%
+      ungroup() %>%
+      mutate(share = value / value_tot_sub) %>%
+      group_by(region, supplysector, subsector) %>%
+      mutate(check_shares = sum(share)) %>%
+      ungroup() %>%
+      select(region, supplysector, subsector, group, share) %>%
+      mutate(scenario = "CORE")
+
+    #L254.StubTranTechCalInput by decile
+    L254.StubTranTechCalInput <- L254.StubTranTechCalInput %>%
+      filter(grepl("pass", supplysector) | grepl("aviation", supplysector)) %>%
+      repeat_add_columns(tibble(group = income_groups)) %>%
+      left_join_error_no_match(L154.trn_serv_shares_subsector %>%
+                                 filter(scenario == "CORE") %>%
+                                 select(-year, -scenario) %>%
+                                 rename(tranSubsector = subsector), by = c("region", "supplysector", "tranSubsector", "group")) %>%
+      mutate(calibrated.value = calibrated.value * share) %>%
+      select(-share) %>%
+      unite(supplysector, c(supplysector, group), sep = "_") %>%
+      bind_rows(L254.StubTranTechCalInput %>%
+                  filter(grepl("freight", supplysector) | grepl("ship", supplysector)))
+
+
+
     # L254.StubTranTechLoadFactor: tranTechnology load factors (all periods)
     # L154.loadfactor_R_trn_m_sz_tech_F_Y reports load factors by GCAM region / mode / size class / technology / fuel / year
     #kbn 2019-10-14 Switching to left_join_keep_first, since we have fewer mode categories now.
@@ -932,101 +989,6 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
       ungroup() %>%
       select(LEVEL2_DATA_NAMES[["StubTranTechCoef"]],sce)
 
-    #===========================================================
-
-    # Allocate energy across multiple groups using shares:
-    # TODO: change shares by mode/tech
-    # Extend shares to all passthrough sectors:
-
-    all_pass_sectors <- A54.globaltranTech_interp %>%
-      mutate(supplysector = sub("_([^_]*)$", "_split_\\1", supplysector)) %>%
-      tidyr::separate(supplysector, into = c("supplysector", "group"), sep = "_split_", extra = "merge", fill = "right") %>%
-      select(supplysector) %>%
-      distinct() %>%
-      filter(grepl("pass", supplysector)) %>%
-      pull()
-
-
-    L154.trn_serv_shares <- L154.trn_serv_shares %>%
-      filter(energy.final.demand == "trn_pass") %>%
-      select(-energy.final.demand) %>%
-      repeat_add_columns(tibble(energy.final.demand = all_pass_sectors)) %>%
-      bind_rows(L154.trn_serv_shares %>% filter(energy.final.demand == "trn_aviation_intl")) %>%
-      mutate(supplysector = paste0(energy.final.demand, "_", group))
-
-    # Create new shares for modes:
-    L154.trn_serv_shares_subsector <- A54.SharesModeTech_trn %>%
-      rename(supplysector = sector) %>%
-      mutate(supplysector = sub("_([^_]*)$", "_split_\\1", supplysector)) %>%
-      tidyr::separate(supplysector, into = c("supplysector", "group"), sep = "_split_", extra = "merge", fill = "right") %>%
-      # Try at subsector level
-      group_by(region, supplysector, subsector, group) %>%
-      summarise(value = sum(value)) %>%
-      ungroup() %>%
-      group_by(region, supplysector, subsector) %>%
-      mutate(value_tot_sub = sum(value)) %>%
-      ungroup() %>%
-      mutate(share = value / value_tot_sub) %>%
-      group_by(region, supplysector, subsector) %>%
-      mutate(check_shares = sum(share)) %>%
-      ungroup() %>%
-      select(region, supplysector, subsector, group, share) %>%
-      mutate(scenario = "CORE")
-
-
-    #L154.trn_serv_shares_subsector <- L154.trn_serv_shares %>%
-    #  filter(scenario == "CORE") %>%
-    # mutate(agg.supplysector = paste0(energy.final.demand, "_", group)) %>%
-    # left_join(adj_supsec, by = "agg.supplysector") %>%
-    # select(-agg.supplysector) %>%
-    # rename(share.check = serv.share) %>%
-    #  left_join(L254.StubTranTechCalInput_basetable %>% rename(scenario = sce),
-    #            by = c("scenario", "region", "year", "supplysector")) %>%
-    #  select(-calibrated.value, -energy.final.demand, -stub.technology, -minicam.energy.input) %>%
-    #      distinct() %>%
-    #  mutate(supplysector = sub("_([^_]*)$", "_split_\\1", supplysector)) %>%
-    #  tidyr::separate(supplysector, into = c("supplysector", "group"), sep = "_split_", extra = "merge", fill = "right") %>%
-    #      left_join_error_no_match(L102.pcgdp_thous90USD_Scen_R_Y_gr %>%
-    #                            filter(scenario == socioeconomics.BASE_GDP_SCENARIO) %>%
-    #                            select(-scenario),
-    #                          by = c("region", "year", "group")) %>%
-    # Add VOTT multiplier:
-    # left_join_error_no_match(L254.tranSubsectorVOTT %>%
-    #             mutate(supplysector = sub("_([^_]*)$", "_split_\\1", supplysector)) %>%
-    #             tidyr::separate(supplysector, into = c("supplysector", "group"), sep = "_split_", extra = "merge", fill = "right") %>%
-    #             rename(scenario = sce) %>%
-    #             filter(scenario == "CORE") %>%
-    #             select(-scenario),
-    #           by = c("region", "tranSubsector", "supplysector", "group")) %>%
-    ## Add Speed (check value)
-    #left_join(L254.tranSubsectorSpeed %>%
-    #                          filter(sce == "CORE") %>%
-    #                          filter(grepl("pass", supplysector) | grepl("aviation", supplysector)) %>%
-    #                          select(-sce) %>%
-    #                          mutate(supplysector = sub("_([^_]*)$", "_split_\\1", supplysector)) %>%
-    #                          tidyr::separate(supplysector, into = c("supplysector", "group"), sep = "_split_", extra = "merge", fill = "right"),
-    #                        by = c("region", "year", "tranSubsector", "supplysector", "group")) %>%
-    # mutate(WEEKS_PER_YEAR = 50,
-    #        HOURS_PER_WEEK = 40) %>%
-    # mutate(time_value = pcGDP_thous90USD * 1000 * time.value.multiplier / (WEEKS_PER_YEAR * HOURS_PER_WEEK) / speed) %>%
-    # group_by(scenario, region, year, supplysector, tranSubsector) %>%
-    # mutate(tot_time_value = sum(time_value)) %>%
-    # ungroup() %>%
-    # mutate(share_mode = time_value / tot_time_value) %>%
-    # select(scenario, region, year, group, supplysector, tranSubsector, share_mode, share.check)
-
-
-    # Allocate the calibrated energy
-    #L254.StubTranTechCalInput_basetable <- L254.StubTranTechCalInput_basetable %>%
-    # left_join(L154.trn_serv_shares %>%
-    #                            select(-energy.final.demand, -group, -year) %>%
-    #                            rename(sce = scenario)
-    #                          , by = c("region", "supplysector", "sce")) %>%
-    # # Replace NAs in freight sectors by 1 (100%) as they don't have subregional shares
-    # replace_na(list(serv.share = 1)) %>%
-    # mutate(calibrated.value = calibrated.value * serv.share) %>%
-    # select(-serv.share)
-
 
     #===========================================================
 
@@ -1035,29 +997,11 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
     #Switching to normal left_joins below since we have more
     #2020
 
-    L254.StubTranTechLoadFactor_unadj <- L254.StubTranTechLoadFactor %>%
-      filter(grepl("pass", supplysector) | grepl("aviation", supplysector)) %>%
-      mutate(supplysector = sub("_([^_]*)$", "_split_\\1", supplysector)) %>%
-      tidyr::separate(supplysector, into = c("supplysector", "group"), sep = "_split_", extra = "merge", fill = "right") %>%
-      select(-group) %>%
-      distinct() %>%
-      bind_rows(L254.StubTranTechLoadFactor %>%
-                  filter(grepl("freight", supplysector) | grepl("ship", supplysector)))
-
-    L254.StubTranTechCoef_unadj <- L254.StubTranTechCoef %>%
-      filter(grepl("pass", supplysector) | grepl("aviation", supplysector)) %>%
-      mutate(supplysector = sub("_([^_]*)$", "_split_\\1", supplysector)) %>%
-      tidyr::separate(supplysector, into = c("supplysector", "group"), sep = "_split_", extra = "merge", fill = "right") %>%
-      select(-group) %>%
-      distinct() %>%
-      bind_rows(L254.StubTranTechCoef %>%
-                  filter(grepl("freight", supplysector) | grepl("ship", supplysector)))
-
     L254.StubTranTechOutput <- L254.StubTranTechCalInput %>%
       select(-contains("share")) %>%
-      left_join(L254.StubTranTechLoadFactor_unadj, by = c("region", "supplysector", "tranSubsector",
+      left_join(L254.StubTranTechLoadFactor, by = c("region", "supplysector", "tranSubsector",
                                                                    "stub.technology", "year", "sce")) %>%
-      left_join(L254.StubTranTechCoef_unadj, by = c("region", "supplysector", "tranSubsector",
+      left_join(L254.StubTranTechCoef, by = c("region", "supplysector", "tranSubsector",
                                                              "stub.technology", "minicam.energy.input", "year","sce")) %>%
       mutate(loadFactor=if_else(is.na(loadFactor),0,loadFactor),
              coefficient=if_else(is.na(coefficient),0,coefficient),
@@ -1068,31 +1012,14 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
 
 
     # The next step is to bind rows with all pass-through technologies on to this table
-    # Create the unadjusted passthrough sectors:
-
-    L254.StubTech_passthru_unadj <- L254.StubTech_passthru %>%
-      # Adjust manually. TODO -> change this!
-      mutate(supplysector = gsub("_d10","", supplysector),
-             supplysector = gsub("_d9","", supplysector),
-             supplysector = gsub("_d8","", supplysector),
-             supplysector = gsub("_d7","", supplysector),
-             supplysector = gsub("_d6","", supplysector),
-             supplysector = gsub("_d5","", supplysector),
-             supplysector = gsub("_d4","", supplysector),
-             supplysector = gsub("_d3","", supplysector),
-             supplysector = gsub("_d2","", supplysector),
-             supplysector = gsub("_d1","", supplysector)) %>%
-      distinct()
-
-
-    L254.StubTechCalInput_passthru_all_rows <- get_data(all_data, "energy/A54.globaltech_passthru_revised",strip_attributes = TRUE) %>%
+    L254.StubTechCalInput_passthru_all_rows <- A54.globaltech_passthru %>%
       repeat_add_columns(tibble(year = MODEL_BASE_YEARS)) %>%
       write_to_all_regions(c(LEVEL2_DATA_NAMES[["tranSubsector"]], "technology", "year", "minicam.energy.input"),
                            GCAM_region_names = GCAM_region_names) %>%
       rename(stub.technology = technology) %>%
       mutate(sce =paste0("CORE")) %>%
       # Subset only the passthrough technologies that are applicable in each region
-      semi_join(L254.StubTech_passthru_unadj, by = c("region", "supplysector", "tranSubsector", "stub.technology","sce")) %>%
+      semi_join(L254.StubTech_passthru, by = c("region", "supplysector", "tranSubsector", "stub.technology","sce")) %>%
       # Start with a 0 value for output, and bind this to the table of output by tranTechnology (using only columns whose names match)
       mutate(output = 0) %>%
       bind_rows(
@@ -1111,59 +1038,55 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
     L254.StubTechCalInput_passthru_cum <- L254.StubTechCalInput_passthru_all_rows %>%
       left_join(L254.StubTechCalInput_passthru_agg, by = c("region", "year", "minicam.energy.input" = "supplysector","sce")) %>%
       # remove the technologies that are not pass-through sectors
-      semi_join(L254.StubTech_passthru_unadj, by = c("region", "supplysector", "tranSubsector", "stub.technology","sce")) %>%
-      # compute cumulative sum for use below
-      arrange(desc(minicam.energy.input)) %>%
-      group_by(region, year) %>%
-      mutate(output_cum = cumsum(output_agg)) %>%
+      semi_join(L254.StubTech_passthru, by = c("region", "supplysector", "tranSubsector", "stub.technology","sce"))
+
+    # Split by supplysector
+    L254.StubTechCalInput_passthru_cum_fr <- L254.StubTechCalInput_passthru_cum %>%
+      filter(supplysector == "trn_freight") %>%
+      select(-output)
+
+    L254.StubTechCalInput_passthru_cum_ldv <- L254.StubTechCalInput_passthru_cum %>%
+      filter(grepl("trn_pass_road_LDV", supplysector)) %>%
+      select(-output)
+
+    L254.StubTechCalInput_passthru_cum_road <- L254.StubTechCalInput_passthru_cum %>%
+      filter(grepl("trn_pass_road", supplysector)) %>%
+      select(-output) %>%
+      mutate(tranSubsector = "LDV",
+             stub.technology = "LDV") %>%
+      mutate(supplysector = gsub("_LDV", "", supplysector),
+             minicam.energy.input = gsub("_4W", "", minicam.energy.input)) %>%
+      group_by(region, supplysector, tranSubsector, stub.technology, year, minicam.energy.input, sce) %>%
+      summarise(output_agg = sum(output_agg)) %>%
+      ungroup()
+
+    L254.StubTechCalInput_passthru_cum_pass <- L254.StubTechCalInput_passthru_cum %>%
+      filter(grepl("trn_pass", supplysector)) %>%
+      select(-output) %>%
+      mutate(tranSubsector = "road",
+             stub.technology = "road") %>%
+      mutate(supplysector = gsub("_road_LDV", "", supplysector),
+             supplysector = gsub("_road", "", supplysector),
+             minicam.energy.input = gsub("_LDV_4W", "", minicam.energy.input),
+             minicam.energy.input = gsub("_LDV", "", minicam.energy.input)) %>%
+      group_by(region, supplysector, tranSubsector, stub.technology, year, minicam.energy.input, sce) %>%
+      summarise(output_agg = sum(output_agg)) %>%
       ungroup()
 
 
-    LIST_supplysector <- unique(L254.StubTechCalInput_passthru_cum$supplysector)
-
-    L254.StubTechCalInput_passthru_cum %>%
-      mutate(calibrated.value = if_else(minicam.energy.input %in% LIST_supplysector,
-                                        output_cum, output_agg),
+    L254.StubTechCalInput_passthru<- bind_rows(
+      L254.StubTechCalInput_passthru_cum_fr,
+      L254.StubTechCalInput_passthru_cum_pass,
+      L254.StubTechCalInput_passthru_cum_road,
+      L254.StubTechCalInput_passthru_cum_ldv) %>%
+      mutate(calibrated.value = output_agg,
              share.weight.year = year,
              subs.share.weight = if_else(calibrated.value > 0, 1, 0),
              tech.share.weight = subs.share.weight) %>%
       select(region, supplysector, tranSubsector, stub.technology, year,
              minicam.energy.input, calibrated.value, share.weight.year,
-             subs.share.weight, tech.share.weight,sce) ->
-      L254.StubTechCalInput_passthru # OUTPUT
-
-    #----------------------
-
-    # Assign CalInput, CalInput_passthrough to each decile
-
-    #L254.StubTranTechCalInput
-    L254.StubTranTechCalInput <- L254.StubTranTechCalInput %>%
-      filter(grepl("pass", supplysector) | grepl("aviation", supplysector)) %>%
-      repeat_add_columns(tibble(group = income_groups)) %>%
-      left_join_error_no_match(L154.trn_serv_shares_subsector %>%
-                                 filter(scenario == "CORE") %>%
-                                 select(-year, -scenario) %>%
-                                 rename(tranSubsector = subsector), by = c("region", "supplysector", "tranSubsector", "group")) %>%
-      mutate(calibrated.value = calibrated.value * share) %>%
-      select(-share) %>%
-      unite(supplysector, c(supplysector, group), sep = "_") %>%
-      bind_rows(L254.StubTranTechCalInput %>%
-                  filter(grepl("freight", supplysector) | grepl("ship", supplysector)))
-
-    #L254.StubTechCalInput_passthru
-    L254.StubTechCalInput_passthru <- L254.StubTechCalInput_passthru %>%
-      filter(grepl("pass", supplysector) | grepl("aviation", supplysector)) %>%
-      repeat_add_columns(tibble(group = income_groups)) %>%
-      left_join_error_no_match(L154.trn_serv_shares %>%
-                                 filter(scenario == "CORE") %>%
-                                 select(-supplysector, -year, -scenario) %>%
-                                 rename(supplysector = energy.final.demand), by = c("region", "supplysector","group")) %>%
-      mutate(calibrated.value = calibrated.value * serv.share) %>%
-      select(-serv.share) %>%
-      mutate(minicam.energy.input = paste0(minicam.energy.input, "_", group)) %>%
-      unite(supplysector, c(supplysector, group), sep = "_") %>%
-      bind_rows(L254.StubTechCalInput_passthru %>%
-                  filter(grepl("freight", supplysector) | grepl("ship", supplysector)))
+             subs.share.weight, tech.share.weight,sce)
+       # OUTPUT
 
 
     #----------------------
@@ -1214,22 +1137,9 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
 
     # L254.BaseService: Base-year service output of transportation final demand
     L254.BaseService <- L254.StubTranTechOutput %>%
-      select(LEVEL2_DATA_NAMES[["StubTranTech"]], year, output,sce) %>%
       rename(base.service = output) %>%
-      filter(grepl("pass", supplysector) | grepl("aviation", supplysector)) %>%
-      repeat_add_columns(tibble(group = income_groups)) %>%
-      left_join_error_no_match(L154.trn_serv_shares_subsector %>%
-                                 filter(scenario == "CORE") %>%
-                                 select(-year, -scenario) %>%
-                                 rename(tranSubsector = subsector), by = c("region", "supplysector", "tranSubsector", "group")) %>%
-      mutate(base.service = base.service * share) %>%
-      select(-share) %>%
-      unite(supplysector, c(supplysector, group), sep = "_") %>%
       bind_rows(
         select(L254.StubTechProd_nonmotor, one_of(LEVEL2_DATA_NAMES[["StubTranTech"]]), year, base.service = calOutputValue,sce)) %>%
-      bind_rows(L254.StubTranTechOutput %>%
-                  select(LEVEL2_DATA_NAMES[["StubTranTech"]], year, base.service = output, sce) %>%
-                  filter(grepl("freight", supplysector) | grepl("ship", supplysector))) %>%
       # Match in energy.final.demand from transportation supplysector information
       # NAs will be introduced, so use left-join
       left_join(A54.sector, by = "supplysector") %>%
