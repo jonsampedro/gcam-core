@@ -1107,6 +1107,8 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
                                  filter(scenario == "CORE") %>%
                                  select(-year, -scenario) %>%
                                  rename(tranSubsector = subsector), by = c("region", "supplysector", "tranSubsector", "group")) %>%
+      # Add equal shares to nonMotor
+      mutate(share = 1/length(income_groups)) %>%
       mutate(calOutputValue = calOutputValue * share) %>%
       select(-share) %>%
       unite(supplysector, c(supplysector, group), sep = "_")
