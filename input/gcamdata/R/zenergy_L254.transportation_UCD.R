@@ -1243,7 +1243,7 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
     # Get the bias adder parameter
     # Calculate decile-specific adders and transition to the cmmon adder in 2030
 
-    adder.trans.year <- 2050
+    adder.trans.year <- 2030
 
     L254.Trn.bias.adder_pre <- trn_data_fin %>%
       filter(year == MODEL_FINAL_BASE_YEAR) %>%
@@ -1284,7 +1284,8 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
       ungroup() %>%
       distinct() %>%
       mutate(sce = "CORE") %>%
-      select(LEVEL2_DATA_NAMES[["Trn_bias_adder"]], sce)
+      select(LEVEL2_DATA_NAMES[["Trn_bias_adder"]], sce) %>%
+      mutate(bias.adder = 0)
 
 
     #--------------------
