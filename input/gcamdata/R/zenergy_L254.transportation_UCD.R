@@ -1286,8 +1286,7 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
       ungroup() %>%
       distinct() %>%
       mutate(sce = "CORE") %>%
-      select(LEVEL2_DATA_NAMES[["Trn_bias_adder"]], sce) %>%
-      mutate(bias.adder = 0)
+      select(LEVEL2_DATA_NAMES[["Trn_bias_adder"]], sce)
 
 
     #--------------------
