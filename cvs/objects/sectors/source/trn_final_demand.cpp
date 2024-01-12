@@ -104,6 +104,11 @@ void TrnFinalDemand::toDebugXML( const int aPeriod,
     XMLWriteElement(mBaseService[ aPeriod ], "base-service", aOut, aTabs );
     XMLWriteElement(mTrnCoef, "coef_trn", aOut, aTabs );
     XMLWriteElement(mBasePriceTrn, "basePrice", aOut, aTabs);
+    XMLWriteElement(mPriceAdjustParam, "PriceAdjustParam", aOut, aTabs);
+    XMLWriteElement(mPriceAdj, "PriceAdj", aOut, aTabs);
+    XMLWriteElement(mPrice, "price", aOut, aTabs);
+    XMLWriteElement(mPriceLag, "lag_price", aOut, aTabs);
+    XMLWriteElement(mPriceRatio, "PriceRatio", aOut, aTabs);
     XMLWriteElement(mSubregIncomeShare[ aPeriod ], "subregional-income-share", aOut, aTabs );
     XMLWriteElement(mSubregPopShare[ aPeriod ], "subregional-population-share", aOut, aTabs );
     XMLWriteElement(mSubregionalPopulation[aPeriod], "subregional-population", aOut, aTabs);
@@ -116,6 +121,7 @@ void TrnFinalDemand::toDebugXML( const int aPeriod,
 
     toDebugXMLDerived( aPeriod, aOut, aTabs );
     XMLWriteClosingTag( getXMLName(), aOut, aTabs );
+
 }
 
 void TrnFinalDemand::toDebugXMLDerived( const int period, std::ostream& out, Tabs* tabs ) const {
@@ -190,7 +196,7 @@ double TrnFinalDemand::calcFinalDemand(const string& aRegionName,
     // unit conversions to convert from thous ppl to ppl
     
         const double CONV_THOUS = 1e3;
-        const double CVRT90 = 2.212;
+        const double CVRT90 = 2.129173099;
 
 
         double population = aDemographics->getTotal(aPeriod);
@@ -223,6 +229,11 @@ double TrnFinalDemand::calcFinalDemand(const string& aRegionName,
     mSubregionalPopulation[aPeriod] = subregionalPopulation;
     mSubregionalIncome[aPeriod] = subregionalIncome;
     mBiasAdderTrn[aPeriod] = TrnBiasAdder;
+    mPriceAdjustParam = PriceAdjustParam;
+    mPriceAdj = price_adj;
+    mPrice = price;
+    mPriceLag = lag_price;
+    mPriceRatio = PriceRatio;
 
         // Function
 

@@ -128,8 +128,23 @@ protected:
         //! Coefficient to adjust trn prices                       
         DEFINE_VARIABLE(SIMPLE, "basePrice", mBasePriceTrn, Value),
 
+        //! Price parameters for debug                      
+        DEFINE_VARIABLE(SIMPLE | NOT_PARSABLE, "PriceAdjustParam", mPriceAdjustParam, Value),
+
+        //! Price parameters for debug                      
+        DEFINE_VARIABLE(SIMPLE | NOT_PARSABLE, "PriceAdj", mPriceAdj, Value),
+
+        //! Price parameters for debug                      
+        DEFINE_VARIABLE(SIMPLE | NOT_PARSABLE, "Price", mPrice, Value),
+
+        //! Price parameters for debug                      
+        DEFINE_VARIABLE(SIMPLE | NOT_PARSABLE, "PriceLag", mPriceLag, Value),
+
+        //! Price parameters for debug                      
+        DEFINE_VARIABLE(SIMPLE | NOT_PARSABLE, "PriceRatio", mPriceRatio, Value),
+
         //! Total end-use sector service after technical change is applied.
-       DEFINE_VARIABLE(ARRAY | STATE | NOT_PARSABLE, "subregional-population", mSubregionalPopulation, objects::PeriodVector<Value>),
+        DEFINE_VARIABLE(ARRAY | STATE | NOT_PARSABLE, "subregional-population", mSubregionalPopulation, objects::PeriodVector<Value>),
 
         //! Total end-use sector service after technical change is applied.
         DEFINE_VARIABLE(ARRAY | STATE | NOT_PARSABLE, "subregional-income", mSubregionalIncome, objects::PeriodVector<Value>),
