@@ -104,8 +104,8 @@ void TrnFinalDemand::toDebugXML( const int aPeriod,
     XMLWriteElement(mBaseService[ aPeriod ], "base-service", aOut, aTabs );
     XMLWriteElement(mTrnCoef, "coef_trn", aOut, aTabs );
     XMLWriteElement(mBasePriceTrn, "basePrice", aOut, aTabs);
-    XMLWriteElement(mPriceAdjustParam, "PriceAdjustParam", aOut, aTabs);
-    XMLWriteElement(mPriceAdj, "PriceAdj", aOut, aTabs);
+    //XMLWriteElement(mPriceAdjustParam, "PriceAdjustParam", aOut, aTabs);
+    //XMLWriteElement(mPriceAdj, "PriceAdj", aOut, aTabs);
     XMLWriteElement(mPrice, "price", aOut, aTabs);
     XMLWriteElement(mPriceLag, "lag_price", aOut, aTabs);
     XMLWriteElement(mPriceRatio, "PriceRatio", aOut, aTabs);
@@ -207,13 +207,16 @@ double TrnFinalDemand::calcFinalDemand(const string& aRegionName,
 
 
         // Price
-    const double PriceAdjustParam = mBasePriceTrn - getPricePaid(aRegionName, scenario->getModeltime()->getFinalCalibrationPeriod());
+    // const double PriceAdjustParam = mBasePriceTrn - getPricePaid(aRegionName, scenario->getModeltime()->getFinalCalibrationPeriod());
 
-    double price_adj = getPricePaid(aRegionName, aPeriod);
-    double price = price_adj + PriceAdjustParam;
+   // double price_adj = getPricePaid(aRegionName, aPeriod);
+   // double price = price_adj + PriceAdjustParam;
+
+    double price = getPricePaid(aRegionName, aPeriod);
 
     // Lag Price
-    double lag_price = getPricePaid(aRegionName, aPeriod - 1) + PriceAdjustParam;
+    // double lag_price = getPricePaid(aRegionName, aPeriod - 1) + PriceAdjustParam;
+    double lag_price = getPricePaid(aRegionName, aPeriod - 1);
 
     // Price Ratio
     double PriceRatio = price / lag_price;
@@ -229,8 +232,8 @@ double TrnFinalDemand::calcFinalDemand(const string& aRegionName,
     mSubregionalPopulation[aPeriod] = subregionalPopulation;
     mSubregionalIncome[aPeriod] = subregionalIncome;
     mBiasAdderTrn[aPeriod] = TrnBiasAdder;
-    mPriceAdjustParam = PriceAdjustParam;
-    mPriceAdj = price_adj;
+    //mPriceAdjustParam = PriceAdjustParam;
+    //mPriceAdj = price_adj;
     mPrice = price;
     mPriceLag = lag_price;
     mPriceRatio = PriceRatio;
