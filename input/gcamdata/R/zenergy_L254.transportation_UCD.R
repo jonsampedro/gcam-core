@@ -1337,8 +1337,7 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
     # Filter the sector/modes to differentiate the costs:
     L254.StubTranTechCost_filter <- L254.StubTranTechCost %>%
       filter(grepl("trn_pass", supplysector),
-             grepl("Car", tranSubsector) | grepl("2W", tranSubsector),
-             grepl("BEV", stub.technology) | grepl("FCEV", stub.technology) | grepl("Hybrid Liquids", stub.technology)) %>%
+             grepl("Car", tranSubsector) | grepl("2W", tranSubsector)) %>%
       mutate(supplysector = gsub("d10", "dx", supplysector)) %>%
       mutate(input.cost = if_else(grepl("d4", supplysector), input.cost  * (1 + r), input.cost),
            input.cost = if_else(grepl("d6", supplysector), input.cost * (1 - r), input.cost ),
