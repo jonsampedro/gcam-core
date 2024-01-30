@@ -168,6 +168,18 @@ module_gcamusa_L254.transportation <- function(command, ...) {
     L154.in_EJ_state_trn_m_sz_tech_F <- get_data(all_data, "L154.in_EJ_state_trn_m_sz_tech_F",strip_attributes = TRUE)
     L154.out_mpkm_state_trn_nonmotor_Yh <- get_data(all_data, "L154.out_mpkm_state_trn_nonmotor_Yh",strip_attributes = TRUE)
 
+    # Delete groups from coef
+    L254.StubTranTechCoef <- L254.StubTranTechCoef %>%
+      filter(grepl("refined liquids bunkers",minicam.energy.input) | grepl("refined liquids transport",minicam.energy.input)| grepl("delivered gas transport",minicam.energy.input)) %>%
+      mutate(minicam.energy.input = sub("_([^_]*)$", "_split_\\1", minicam.energy.input)) %>%
+      tidyr::separate(minicam.energy.input, into = c("minicam.energy.input", "group"), sep = "_split_", extra = "merge", fill = "right") %>%
+      select(-group) %>%
+      distinct() %>%
+      bind_rows(L254.StubTranTechCoef %>%
+                  filter(!grepl("refined liquids transport",minicam.energy.input) ,
+                         !grepl("refined liquids bunkers",minicam.energy.input) ,
+                         !grepl("delivered gas transport",minicam.energy.input)))
+
     # First delete multiple consumers as they are not applied to gcamusa
     # create a function:
     remove.mult.groups <- function(df){

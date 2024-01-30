@@ -2,7 +2,7 @@
 # Title: Mapping between intermediate fuel names and minicam-energy-input names
 # Units: NA
 # Source: NA
-# Column types: cc 
+# Column types: cc
 # ----------
 minicam.energy.input,fuel
 regional biomass,biomass
@@ -17,9 +17,41 @@ elect_td_trn,electricity
 regional natural gas,gas
 wholesale gas,gas
 delivered gas,gas
+delivered gas transport,gas
 regional oil,oil
 regional sugar for ethanol,sugar
 regional sugarbeet for ethanol,sugarbeet
 refined liquids enduse,refined liquids
 refined liquids industrial,refined liquids
-
+refined liquids bunkers,refined liquids
+refined liquids transport,refined liquids
+refined liquids transport_d1,refined liquids
+refined liquids transport_d2,refined liquids
+refined liquids transport_d3,refined liquids
+refined liquids transport_d4,refined liquids
+refined liquids transport_d5,refined liquids
+refined liquids transport_d6,refined liquids
+refined liquids transport_d7,refined liquids
+refined liquids transport_d8,refined liquids
+refined liquids transport_d9,refined liquids
+refined liquids transport_d10,refined liquids
+refined liquids bunkers_d1,refined liquids
+refined liquids bunkers_d2,refined liquids
+refined liquids bunkers_d3,refined liquids
+refined liquids bunkers_d4,refined liquids
+refined liquids bunkers_d5,refined liquids
+refined liquids bunkers_d6,refined liquids
+refined liquids bunkers_d7,refined liquids
+refined liquids bunkers_d8,refined liquids
+refined liquids bunkers_d9,refined liquids
+refined liquids bunkers_d10,refined liquids
+delivered gas transport_d1,refined liquids
+delivered gas transport_d2,refined liquids
+delivered gas transport_d3,refined liquids
+delivered gas transport_d4,refined liquids
+delivered gas transport_d5,refined liquids
+delivered gas transport_d6,refined liquids
+delivered gas transport_d7,refined liquids
+delivered gas transport_d8,refined liquids
+delivered gas transport_d9,refined liquids
+delivered gas transport_d10,refined liquids

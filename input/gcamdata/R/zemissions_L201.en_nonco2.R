@@ -400,6 +400,44 @@ module_emissions_L201.en_nonco2 <- function(command, ...) {
     L201.nonghg_max_reduction <- delete_nonexistent_sectors(L201.nonghg_max_reduction, L201.delete.sectors)
     L201.nonghg_steepness <- delete_nonexistent_sectors(L201.nonghg_steepness, L201.delete.sectors)
 
+
+
+    # Add input name to deciles:
+    L201.en_pol_emissions <- L201.en_pol_emissions %>%
+      filter(grepl("pass", supplysector) | grepl("aviation", supplysector)) %>%
+      mutate(supplysector = sub("_([^_]*)$", "_split_\\1", supplysector)) %>%
+      tidyr::separate(supplysector, into = c("supplysector", "group"), sep = "_split_", extra = "merge", fill = "right") %>%
+      mutate(supplysector =  paste0(supplysector, "_", group),
+             input.name =  paste0(input.name, "_", group)) %>%
+      select(-group) %>%
+      bind_rows(L201.en_pol_emissions %>%
+                  filter(!grepl("pass", supplysector),
+                         !grepl("aviation", supplysector)))
+
+      L201.en_ghg_emissions <- L201.en_ghg_emissions %>%
+        filter(grepl("pass", supplysector) | grepl("aviation", supplysector)) %>%
+        mutate(supplysector = sub("_([^_]*)$", "_split_\\1", supplysector)) %>%
+        tidyr::separate(supplysector, into = c("supplysector", "group"), sep = "_split_", extra = "merge", fill = "right") %>%
+        mutate(supplysector =  paste0(supplysector, "_", group),
+               input.name =  paste0(input.name, "_", group)) %>%
+        select(-group) %>%
+      bind_rows(L201.en_ghg_emissions %>%
+                  filter(!grepl("pass", supplysector),
+                         !grepl("aviation", supplysector)))
+
+      L201.en_bcoc_emissions <- L201.en_bcoc_emissions %>%
+        filter(grepl("pass", supplysector) | grepl("aviation", supplysector)) %>%
+        mutate(supplysector = sub("_([^_]*)$", "_split_\\1", supplysector)) %>%
+        tidyr::separate(supplysector, into = c("supplysector", "group"), sep = "_split_", extra = "merge", fill = "right") %>%
+        mutate(supplysector =  paste0(supplysector, "_", group),
+               input.name =  paste0(input.name, "_", group)) %>%
+        select(-group) %>%
+        bind_rows(L201.en_bcoc_emissions %>%
+                    filter(!grepl("pass", supplysector),
+                           !grepl("aviation", supplysector)))
+
+
+
     # Produce outputs
     L201.en_pol_emissions %>%
       add_title("Pollutant emissions for energy technologies in all regions") %>%

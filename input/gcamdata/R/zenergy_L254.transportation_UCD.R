@@ -1355,6 +1355,28 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
       mutate(input.cost = if_else(is.na(input.cost.y == T), input.cost.x, input.cost.y)) %>%
       select(LEVEL2_DATA_NAMES[["StubTranTechCost"]], sce)
 
+# Add decile-specific minicam-energy-inputs
+    L254.StubTranTechCalInput <- L254.StubTranTechCalInput %>%
+      filter(grepl("pass", supplysector) | grepl("aviation", supplysector)) %>%
+      mutate(supplysector = sub("_([^_]*)$", "_split_\\1", supplysector)) %>%
+      tidyr::separate(supplysector, into = c("supplysector", "group"), sep = "_split_", extra = "merge", fill = "right") %>%
+      mutate(minicam.energy.input = if_else(minicam.energy.input == "refined liquids transport", paste0(minicam.energy.input, "_", group), minicam.energy.input),
+             minicam.energy.input = if_else(minicam.energy.input == "refined liquids bunkers", paste0(minicam.energy.input, "_", group), minicam.energy.input),
+             minicam.energy.input = if_else(minicam.energy.input == "delivered gas transport", paste0(minicam.energy.input, "_", group), minicam.energy.input)) %>%
+      unite(supplysector, c("supplysector", "group"), sep = "_") %>%
+      bind_rows(L254.StubTranTechCalInput %>%
+                  filter(grepl("freight", supplysector) | grepl("ship", supplysector)))
+
+    L254.StubTranTechCoef <- L254.StubTranTechCoef %>%
+      filter(grepl("pass", supplysector) | grepl("aviation", supplysector)) %>%
+      mutate(supplysector = sub("_([^_]*)$", "_split_\\1", supplysector)) %>%
+      tidyr::separate(supplysector, into = c("supplysector", "group"), sep = "_split_", extra = "merge", fill = "right") %>%
+      mutate(minicam.energy.input = if_else(minicam.energy.input == "refined liquids transport", paste0(minicam.energy.input, "_", group), minicam.energy.input),
+             minicam.energy.input = if_else(minicam.energy.input == "refined liquids bunkers", paste0(minicam.energy.input, "_", group), minicam.energy.input),
+             minicam.energy.input = if_else(minicam.energy.input == "delivered gas transport", paste0(minicam.energy.input, "_", group), minicam.energy.input)) %>%
+      unite(supplysector, c("supplysector", "group"), sep = "_") %>%
+      bind_rows(L254.StubTranTechCoef %>%
+                  filter(grepl("freight", supplysector) | grepl("ship", supplysector)))
 
 
 

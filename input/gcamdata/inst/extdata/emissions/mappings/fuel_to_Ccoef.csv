@@ -15,9 +15,12 @@ gas processing,gas
 gas pipeline,gas
 wholesale gas,gas
 delivered gas,gas
+delivered gas transport,gas
 crude oil,refined liquids
 regional oil,refined liquids
 refining,refined liquids
 refined liquids industrial,refined liquids
 refined liquids enduse,refined liquids
 unconventional oil upscaling,refined liquids
+refined liquids bunkers,refined liquids
+refined liquids transport,refined liquids
