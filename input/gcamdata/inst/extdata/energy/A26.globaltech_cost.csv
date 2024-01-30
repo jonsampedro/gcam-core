@@ -22,3 +22,13 @@ refined liquids enduse,refined liquids enduse,refined liquids enduse,non-energy,
 refined liquids industrial,refined liquids industrial,refined liquids industrial,non-energy,0,0,0,0
 refined liquids transport,refined liquids transport,refined liquids transport,non-energy,0,0,0,0
 refined liquids bunkers,refined liquids bunkers,refined liquids bunkers,non-energy,0,0,0,0
+delivered gas transport_d1,delivered gas transport_d1,delivered gas transport_d1,non-energy,1.25,1.25,1.25,1.25
+delivered gas transport_d2,delivered gas transport_d2,delivered gas transport_d2,non-energy,1.25,1.25,1.25,1.25
+delivered gas transport_d3,delivered gas transport_d3,delivered gas transport_d3,non-energy,1.25,1.25,1.25,1.25
+delivered gas transport_d4,delivered gas transport_d4,delivered gas transport_d4,non-energy,1.25,1.25,1.25,1.25
+delivered gas transport_d5,delivered gas transport_d5,delivered gas transport_d5,non-energy,1.25,1.25,1.25,1.25
+delivered gas transport_d6,delivered gas transport_d6,delivered gas transport_d6,non-energy,1.25,1.25,1.25,1.25
+delivered gas transport_d7,delivered gas transport_d7,delivered gas transport_d7,non-energy,1.25,1.25,1.25,1.25
+delivered gas transport_d8,delivered gas transport_d8,delivered gas transport_d8,non-energy,1.25,1.25,1.25,1.25
+delivered gas transport_d9,delivered gas transport_d9,delivered gas transport_d9,non-energy,1.25,1.25,1.25,1.25
+delivered gas transport_d10,delivered gas transport_d10,delivered gas transport_d10,non-energy,1.25,1.25,1.25,1.25

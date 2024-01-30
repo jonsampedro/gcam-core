@@ -29,7 +29,6 @@ module_energy_L226.en_distribution <- function(command, ...) {
              FILE = "energy/A26.globaltech_eff",
              FILE = "energy/A26.globaltech_cost",
              FILE = "energy/A26.globaltech_shrwt",
-             "L106.income_distributions",
              "L126.IO_R_elecownuse_F_Yh",
              "L126.IO_R_electd_F_Yh",
              "L126.IO_R_gaspipe_F_Yh"))
@@ -73,9 +72,6 @@ module_energy_L226.en_distribution <- function(command, ...) {
     L126.IO_R_electd_F_Yh <- get_data(all_data, "L126.IO_R_electd_F_Yh")
     L126.IO_R_gaspipe_F_Yh <- get_data(all_data, "L126.IO_R_gaspipe_F_Yh")
 
-    # Load subregional shares:
-    L106.income_shares <- get_data(all_data, "L106.income_distributions", strip_attributes = TRUE)
-    income_groups <- c("", unique(L106.income_shares$gcam.consumer))
 
     # ===================================================
 
@@ -84,39 +80,14 @@ module_energy_L226.en_distribution <- function(command, ...) {
     # 2a. Supplysector information
     # "L226.Supplysector_en: Supply sector information for energy distribution sectors"
     L226.Supplysector_en <- A26.sector %>%
-      write_to_all_regions(c("region", "supplysector", "output.unit", "input.unit", "price.unit", "logit.year.fillout", "logit.exponent", LOGIT_TYPE_COLNAME), GCAM_region_names) %>%
-      # add income groups
-      repeat_add_columns(tibble(group = income_groups)) %>%
-      mutate(supplysector = if_else(supplysector == "refined liquids transport", paste0(supplysector, "_", group), supplysector),
-             supplysector = if_else(supplysector == "refined liquids bunkers", paste0(supplysector, "_", group), supplysector),
-             supplysector = if_else(supplysector == "delivered gas transport", paste0(supplysector, "_", group), supplysector)) %>%
-      mutate(supplysector = if_else(supplysector == "refined liquids transport_", "refined liquids transport", supplysector),
-             supplysector = if_else(supplysector == "refined liquids bunkers_", "refined liquids bunkers", supplysector),
-             supplysector = if_else(supplysector == "delivered gas transport_", "delivered gas transport", supplysector)) %>%
-      select(-group) %>%
-      distinct()
+      write_to_all_regions(c("region", "supplysector", "output.unit", "input.unit", "price.unit", "logit.year.fillout", "logit.exponent", LOGIT_TYPE_COLNAME), GCAM_region_names)
 
 
     # 2b. Subsector information
     # "L226.SubsectorLogit_en: Subsector logit exponents of energy distribution sectors"
     L226.SubsectorLogit_en <- A26.subsector_logit %>%
-      write_to_all_regions(c("region", "supplysector", "subsector", "logit.year.fillout", "logit.exponent", LOGIT_TYPE_COLNAME), GCAM_region_names) %>%
-      # add income groups
-      repeat_add_columns(tibble(group = income_groups)) %>%
-      mutate(supplysector = if_else(supplysector == "refined liquids transport", paste0(supplysector, "_", group), supplysector),
-             supplysector = if_else(supplysector == "refined liquids bunkers", paste0(supplysector, "_", group), supplysector),
-             supplysector = if_else(supplysector == "delivered gas transport", paste0(supplysector, "_", group), supplysector)) %>%
-      mutate(subsector = if_else(subsector == "refined liquids transport", paste0(subsector, "_", group), subsector),
-             subsector = if_else(subsector == "refined liquids bunkers", paste0(subsector, "_", group), subsector),
-             subsector = if_else(subsector == "delivered gas transport", paste0(subsector, "_", group), subsector)) %>%
-      mutate(supplysector = if_else(supplysector == "refined liquids transport_", "refined liquids transport", supplysector),
-             supplysector = if_else(supplysector == "refined liquids bunkers_", "refined liquids bunkers", supplysector),
-             supplysector = if_else(supplysector == "delivered gas transport_", "delivered gas transport", supplysector)) %>%
-      mutate(subsector = if_else(subsector == "refined liquids transport_", "refined liquids transport", subsector),
-             subsector = if_else(subsector == "refined liquids bunkers_", "refined liquids bunkers", subsector),
-             subsector = if_else(subsector == "delivered gas transport_", "delivered gas transport", subsector)) %>%
-      select(-group) %>%
-      distinct()
+      write_to_all_regions(c("region", "supplysector", "subsector", "logit.year.fillout", "logit.exponent", LOGIT_TYPE_COLNAME), GCAM_region_names)
+
 
 
     # set names for subsector shareweight and interpolation in energy distribution sectors
@@ -163,29 +134,7 @@ module_energy_L226.en_distribution <- function(command, ...) {
     # Note: assuming that technology list in the shareweight table includes the full set (any others would default to a 0 shareweight)
     L226.StubTech_en <- A26.globaltech_shrwt %>%
       write_to_all_regions(c("region", "supplysector", "subsector", "technology"), GCAM_region_names) %>%
-      rename(stub.technology = technology) %>%
-      # add income groups
-      repeat_add_columns(tibble(group = income_groups)) %>%
-      mutate(supplysector = if_else(supplysector == "refined liquids transport", paste0(supplysector, "_", group), supplysector),
-             supplysector = if_else(supplysector == "refined liquids bunkers", paste0(supplysector, "_", group), supplysector),
-             supplysector = if_else(supplysector == "delivered gas transport", paste0(supplysector, "_", group), supplysector)) %>%
-      mutate(subsector = if_else(subsector == "refined liquids transport", paste0(subsector, "_", group), subsector),
-             subsector = if_else(subsector == "refined liquids bunkers", paste0(subsector, "_", group), subsector),
-             subsector = if_else(subsector == "delivered gas transport", paste0(subsector, "_", group), subsector)) %>%
-      mutate(stub.technology = if_else(stub.technology == "refined liquids transport", paste0(stub.technology, "_", group), stub.technology),
-             stub.technology = if_else(stub.technology == "refined liquids bunkers", paste0(stub.technology, "_", group), stub.technology),
-             stub.technology = if_else(stub.technology == "delivered gas transport", paste0(stub.technology, "_", group), stub.technology)) %>%
-      mutate(supplysector = if_else(supplysector == "refined liquids transport_", "refined liquids transport", supplysector),
-             supplysector = if_else(supplysector == "refined liquids bunkers_", "refined liquids bunkers", supplysector),
-             supplysector = if_else(supplysector == "delivered gas transport_", "delivered gas transport", supplysector)) %>%
-      mutate(subsector = if_else(subsector == "refined liquids transport_", "refined liquids transport", subsector),
-             subsector = if_else(subsector == "refined liquids bunkers_", "refined liquids bunkers", subsector),
-             subsector = if_else(subsector == "delivered gas transport_", "delivered gas transport", subsector)) %>%
-      mutate(stub.technology = if_else(stub.technology == "refined liquids transport_", "refined liquids transport", stub.technology),
-             stub.technology = if_else(stub.technology == "refined liquids bunkers_", "refined liquids bunkers", stub.technology),
-             stub.technology = if_else(stub.technology == "delivered gas transport_", "delivered gas transport", stub.technology)) %>%
-      select(-group) %>%
-      distinct()
+      rename(stub.technology = technology)
 
 
     # Set number of digits to round final values of elecownuse, electd, and elecgaspipe coefficients, globaltech efficiency, and globaltech cost
@@ -204,29 +153,7 @@ module_energy_L226.en_distribution <- function(command, ...) {
       filter(year %in% c(MODEL_BASE_YEARS, MODEL_FUTURE_YEARS)) %>%
       # Assign the columns "sector.name" and "subsector.name", consistent with the location info of a global technology
       rename(sector.name = supplysector, subsector.name = subsector) %>%
-      mutate(efficiency = round(efficiency, DIGITS_EFFICIENCY)) %>%
-      # add income groups
-      repeat_add_columns(tibble(group = income_groups)) %>%
-      mutate(sector.name = if_else(sector.name == "refined liquids transport", paste0(sector.name, "_", group), sector.name),
-             sector.name = if_else(sector.name == "refined liquids bunkers", paste0(sector.name, "_", group), sector.name),
-             sector.name = if_else(sector.name == "delivered gas transport", paste0(sector.name, "_", group), sector.name)) %>%
-      mutate(subsector.name = if_else(subsector.name == "refined liquids transport", paste0(subsector.name, "_", group), subsector.name),
-             subsector.name = if_else(subsector.name == "refined liquids bunkers", paste0(subsector.name, "_", group), subsector.name),
-             subsector.name = if_else(subsector.name == "delivered gas transport", paste0(subsector.name, "_", group), subsector.name)) %>%
-      mutate(technology = if_else(technology == "refined liquids transport", paste0(technology, "_", group), technology),
-             technology = if_else(technology == "refined liquids bunkers", paste0(technology, "_", group), technology),
-             technology = if_else(technology == "delivered gas transport", paste0(technology, "_", group), technology)) %>%
-      mutate(sector.name = if_else(sector.name == "refined liquids transport_", "refined liquids transport", sector.name),
-             sector.name = if_else(sector.name == "refined liquids bunkers_", "refined liquids bunkers", sector.name),
-             sector.name = if_else(sector.name == "delivered gas transport_", "delivered gas transport", sector.name)) %>%
-      mutate(subsector.name = if_else(subsector.name == "refined liquids transport_", "refined liquids transport", subsector.name),
-             subsector.name = if_else(subsector.name == "refined liquids bunkers_", "refined liquids bunkers", subsector.name),
-             subsector.name = if_else(subsector.name == "delivered gas transport_", "delivered gas transport", subsector.name)) %>%
-      mutate(technology = if_else(technology == "refined liquids transport_", "refined liquids transport", technology),
-             technology = if_else(technology == "refined liquids bunkers_", "refined liquids bunkers", technology),
-             technology = if_else(technology == "delivered gas transport_", "delivered gas transport", technology)) %>%
-      select(-group) %>%
-      distinct()
+      mutate(efficiency = round(efficiency, DIGITS_EFFICIENCY))
 
 
     # Generates L226.GlobalTechCost_en by interpolating values of cost adders for final energy delivery for all model years
@@ -240,29 +167,7 @@ module_energy_L226.en_distribution <- function(command, ...) {
       filter(year %in% c(MODEL_BASE_YEARS, MODEL_FUTURE_YEARS)) %>%
       # Assign the columns "sector.name" and "subsector.name", consistent with the location info of a global technology
       rename(sector.name = supplysector, subsector.name = subsector) %>%
-      mutate(input.cost = round(input.cost, DIGITS_COST)) %>%
-      # add income groups
-      repeat_add_columns(tibble(group = income_groups)) %>%
-      mutate(sector.name = if_else(sector.name == "refined liquids transport", paste0(sector.name, "_", group), sector.name),
-             sector.name = if_else(sector.name == "refined liquids bunkers", paste0(sector.name, "_", group), sector.name),
-             sector.name = if_else(sector.name == "delivered gas transport", paste0(sector.name, "_", group), sector.name)) %>%
-      mutate(subsector.name = if_else(subsector.name == "refined liquids transport", paste0(subsector.name, "_", group), subsector.name),
-             subsector.name = if_else(subsector.name == "refined liquids bunkers", paste0(subsector.name, "_", group), subsector.name),
-             subsector.name = if_else(subsector.name == "delivered gas transport", paste0(subsector.name, "_", group), subsector.name)) %>%
-      mutate(technology = if_else(technology == "refined liquids transport", paste0(technology, "_", group), technology),
-             technology = if_else(technology == "refined liquids bunkers", paste0(technology, "_", group), technology),
-             technology = if_else(technology == "delivered gas transport", paste0(technology, "_", group), technology)) %>%
-      mutate(sector.name = if_else(sector.name == "refined liquids transport_", "refined liquids transport", sector.name),
-             sector.name = if_else(sector.name == "refined liquids bunkers_", "refined liquids bunkers", sector.name),
-             sector.name = if_else(sector.name == "delivered gas transport_", "delivered gas transport", sector.name)) %>%
-      mutate(subsector.name = if_else(subsector.name == "refined liquids transport_", "refined liquids transport", subsector.name),
-             subsector.name = if_else(subsector.name == "refined liquids bunkers_", "refined liquids bunkers", subsector.name),
-             subsector.name = if_else(subsector.name == "delivered gas transport_", "delivered gas transport", subsector.name)) %>%
-      mutate(technology = if_else(technology == "refined liquids transport_", "refined liquids transport", technology),
-             technology = if_else(technology == "refined liquids bunkers_", "refined liquids bunkers", technology),
-             technology = if_else(technology == "delivered gas transport_", "delivered gas transport", technology)) %>%
-      select(-group) %>%
-      distinct()
+      mutate(input.cost = round(input.cost, DIGITS_COST))
 
 
     FCR <- (socioeconomics.DEFAULT_INTEREST_RATE * (1+socioeconomics.DEFAULT_INTEREST_RATE)^socioeconomics.INDUSTRY_CAP_PAYMENTS) /
@@ -286,29 +191,7 @@ module_energy_L226.en_distribution <- function(command, ...) {
       ungroup() %>%
       filter(year %in% c(MODEL_BASE_YEARS, MODEL_FUTURE_YEARS)) %>%
       # Assign the columns "sector.name" and "subsector.name", consistent with the location info of a global technology
-      rename(sector.name = supplysector, subsector.name = subsector) %>%
-      # add income groups
-      repeat_add_columns(tibble(group = income_groups)) %>%
-      mutate(sector.name = if_else(sector.name == "refined liquids transport", paste0(sector.name, "_", group), sector.name),
-             sector.name = if_else(sector.name == "refined liquids bunkers", paste0(sector.name, "_", group), sector.name),
-             sector.name = if_else(sector.name == "delivered gas transport", paste0(sector.name, "_", group), sector.name)) %>%
-      mutate(subsector.name = if_else(subsector.name == "refined liquids transport", paste0(subsector.name, "_", group), subsector.name),
-             subsector.name = if_else(subsector.name == "refined liquids bunkers", paste0(subsector.name, "_", group), subsector.name),
-             subsector.name = if_else(subsector.name == "delivered gas transport", paste0(subsector.name, "_", group), subsector.name)) %>%
-      mutate(technology = if_else(technology == "refined liquids transport", paste0(technology, "_", group), technology),
-             technology = if_else(technology == "refined liquids bunkers", paste0(technology, "_", group), technology),
-             technology = if_else(technology == "delivered gas transport", paste0(technology, "_", group), technology)) %>%
-      mutate(sector.name = if_else(sector.name == "refined liquids transport_", "refined liquids transport", sector.name),
-             sector.name = if_else(sector.name == "refined liquids bunkers_", "refined liquids bunkers", sector.name),
-             sector.name = if_else(sector.name == "delivered gas transport_", "delivered gas transport", sector.name)) %>%
-      mutate(subsector.name = if_else(subsector.name == "refined liquids transport_", "refined liquids transport", subsector.name),
-             subsector.name = if_else(subsector.name == "refined liquids bunkers_", "refined liquids bunkers", subsector.name),
-             subsector.name = if_else(subsector.name == "delivered gas transport_", "delivered gas transport", subsector.name)) %>%
-      mutate(technology = if_else(technology == "refined liquids transport_", "refined liquids transport", technology),
-             technology = if_else(technology == "refined liquids bunkers_", "refined liquids bunkers", technology),
-             technology = if_else(technology == "delivered gas transport_", "delivered gas transport", technology)) %>%
-      select(-group) %>%
-      distinct()
+      rename(sector.name = supplysector, subsector.name = subsector)
 
 
     # 2d. Calibration and region-specific data

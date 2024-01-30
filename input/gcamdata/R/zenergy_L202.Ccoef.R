@@ -22,7 +22,6 @@ module_energy_L202.Ccoef <- function(command, ...) {
     return(c(FILE = "common/GCAM_region_names",
              FILE = "emissions/A_PrimaryFuelCCoef",
              FILE = "emissions/mappings/fuel_to_Ccoef",
-             "L106.income_distributions",
              "L102.Ccoef_kgCGJ_F_Yh",
              "L102.Ccoef_kgCGJ_R_F_Yh"))
   } else if(command == driver.DECLARE_OUTPUTS) {
@@ -42,24 +41,10 @@ module_energy_L202.Ccoef <- function(command, ...) {
     L102.Ccoef_kgCGJ_F_Yh <- get_data(all_data, "L102.Ccoef_kgCGJ_F_Yh")
     L102.Ccoef_kgCGJ_R_F_Yh <- get_data(all_data, "L102.Ccoef_kgCGJ_R_F_Yh")
 
-    # Load subregional shares:
-    L106.income_shares <- get_data(all_data, "L106.income_distributions", strip_attributes = TRUE)
-    income_groups <- c("", unique(L106.income_shares$gcam.consumer))
-
     # ===================================================
     # Carbon contents of fuels in all regions
     L202.CarbonCoef <- A_PrimaryFuelCCoef %>%
-      write_to_all_regions(c(LEVEL2_DATA_NAMES[["CarbonCoef"]]), GCAM_region_names = GCAM_region_names, has_traded = TRUE) %>%
-    # add income groups
-    repeat_add_columns(tibble(group = income_groups)) %>%
-      mutate(PrimaryFuelCO2Coef.name = if_else(PrimaryFuelCO2Coef.name == "refined liquids transport", paste0(PrimaryFuelCO2Coef.name, "_", group), PrimaryFuelCO2Coef.name),
-             PrimaryFuelCO2Coef.name = if_else(PrimaryFuelCO2Coef.name == "refined liquids bunkers", paste0(PrimaryFuelCO2Coef.name, "_", group), PrimaryFuelCO2Coef.name),
-             PrimaryFuelCO2Coef.name = if_else(PrimaryFuelCO2Coef.name == "delivered gas transport", paste0(PrimaryFuelCO2Coef.name, "_", group), PrimaryFuelCO2Coef.name)) %>%
-      mutate(PrimaryFuelCO2Coef.name = if_else(PrimaryFuelCO2Coef.name == "refined liquids transport_", "refined liquids transport", PrimaryFuelCO2Coef.name),
-             PrimaryFuelCO2Coef.name = if_else(PrimaryFuelCO2Coef.name == "refined liquids bunkers_", "refined liquids bunkers", PrimaryFuelCO2Coef.name),
-             PrimaryFuelCO2Coef.name = if_else(PrimaryFuelCO2Coef.name == "delivered gas transport_", "delivered gas transport", PrimaryFuelCO2Coef.name)) %>%
-      select(-group) %>%
-      distinct()
+      write_to_all_regions(c(LEVEL2_DATA_NAMES[["CarbonCoef"]]), GCAM_region_names = GCAM_region_names, has_traded = TRUE)
 
 
 
@@ -113,8 +98,7 @@ module_energy_L202.Ccoef <- function(command, ...) {
       add_comments("Data can be generated in 3 ways. 1. Using GCAM 3.0 assumptions 2. Using global average emissions") %>%
       add_comments("coefficients based on CDIAC inventory and IEA energy balances or 3. Using region-specific average emissions coefficients based on CDIAC inventory and IEA energy balances") %>%
       add_legacy_name("L202.CarbonCoef") %>%
-      add_precursors("common/GCAM_region_names", "emissions/A_PrimaryFuelCCoef",
-                     "L106.income_distributions", "emissions/mappings/fuel_to_Ccoef", "L102.Ccoef_kgCGJ_F_Yh", "L102.Ccoef_kgCGJ_R_F_Yh") ->
+      add_precursors("common/GCAM_region_names", "emissions/A_PrimaryFuelCCoef","emissions/mappings/fuel_to_Ccoef", "L102.Ccoef_kgCGJ_F_Yh", "L102.Ccoef_kgCGJ_R_F_Yh") ->
       L202.CarbonCoef
 
     return_data(L202.CarbonCoef)
