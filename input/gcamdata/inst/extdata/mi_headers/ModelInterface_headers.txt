@@ -519,9 +519,9 @@ DeleteConsumer, world/+{name}region, region/+{name; delete=1}gcam-consumer, scen
 
 DeleteFinalDemand, world/+{name}region,region/+{name; delete=1}energy-final-demand, scenario, scenario/world
 
-SubregionalShares, world/+{name}region, region/+{name}gcam-consumer, gcam-consumer/+{year;fillout=1}subregional-population-share, gcam-consumer/+{year;fillout=1}subregional-income-share, gcam-consumer/+subregional-population-share, gcam-consumer/+subregional-income-share, scenario, scenario/world
+SubregionalShares, world/+{name}region, region/+{name}gcam-consumer, gcam-consumer/+{year}subregional-population-share, gcam-consumer/+{year}subregional-income-share, gcam-consumer/+subregional-population-share, gcam-consumer/+subregional-income-share, scenario, scenario/world
 
-SubregionalShares_trn, world/+{name}region, region/+{name}trn-final-demand, trn-final-demand/+{year;fillout=1}subregional-population-share, trn-final-demand/+{year;fillout=1}subregional-income-share, trn-final-demand/+subregional-population-share, trn-final-demand/+subregional-income-share, scenario, scenario/world
+SubregionalShares_trn, world/+{name}region, region/+{name}trn-final-demand, trn-final-demand/+{year}subregional-population-share, trn-final-demand/+{year}subregional-income-share, trn-final-demand/+subregional-population-share, trn-final-demand/+subregional-income-share, scenario, scenario/world
 
 SubregionalShares_Year, world/+{name}region, region/+{name}gcam-consumer, gcam-consumer/+{year}subregional-population-share, gcam-consumer/+{year}subregional-income-share, gcam-consumer/+subregional-population-share, gcam-consumer/+subregional-income-share, scenario, scenario/world
 
