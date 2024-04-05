@@ -104,11 +104,11 @@
 
         <Value name = "prune_ag">../input/gcamdata/xml_Gini50/prune_empty_ag.xml</Value>
 
-		<Value name = "solver">../input/solution/cal_broyden_config.xml</Value>
+		<Value name = "solver">../input/solution/cal_broyden_config6000.xml</Value>
 		
 	</ScenarioComponents>
 	<Strings>
-		<Value name="scenarioName">Gini25_SSP2_Ineq</Value>
+		<Value name="scenarioName">Gini50_SSP2_Ineq</Value>
 		<Value name="debug-region">USA</Value>
 		<Value name="MAGICC-input-dir">../input/magicc/inputs</Value>
 		<Value name="MAGICC-output-dir">../output</Value>

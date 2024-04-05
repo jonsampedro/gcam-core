@@ -104,7 +104,7 @@
 
         <Value name = "prune_ag">../input/gcamdata/xml_Gini25/prune_empty_ag.xml</Value>
 
-		<Value name = "solver">../input/solution/cal_broyden_config.xml</Value>
+		<Value name = "solver">../input/solution/cal_broyden_config6000.xml</Value>
 		
 	</ScenarioComponents>
 	<Strings>
