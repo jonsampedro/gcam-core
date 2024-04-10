@@ -32,13 +32,13 @@
       <region name="EU-15">
          <ghgpolicy name="GHG">
             <market>EU-15</market>   
-            <constraint year="2020">2703.67248785236</constraint> 
-            <constraint year="2025">2407.51513135204</constraint> 
-            <constraint year="2030">1902.13140738677</constraint> 
-            <constraint year="2035">1718.91101134117</constraint> 
-            <constraint year="2040">1334.70351864199</constraint> 
-            <constraint year="2045">886.100280569171</constraint> 
-            <constraint year="2050">344.317122170584</constraint> 
+            <constraint year="2020">3123</constraint> 
+            <constraint year="2025">2642</constraint> 
+            <constraint year="2030">2162</constraint> 
+            <constraint year="2035">1898.91101134117</constraint> 
+            <constraint year="2040">1454.70351864199</constraint> 
+            <constraint year="2045">946.100280569171</constraint> 
+            <constraint year="2050">364.317122170584</constraint> 
 
                      </ghgpolicy>
 
@@ -61,13 +61,13 @@
       <region name="European Free Trade Association">
          <ghgpolicy name="GHG">
             <market>EFTA</market>
-            <!--constraint year="2020">552.997584717857</constraint--> 
-            <constraint year="2025">541.836415951762</constraint> 
-            <constraint year="2030">402.394718115988</constraint> 
-            <constraint year="2035">371.601000823696</constraint> 
-            <constraint year="2040">275.604620567099</constraint> 
-            <constraint year="2045">162.598258447344</constraint> 
-            <constraint year="2050">44.4199443877497</constraint> 
+            <constraint year="2020">118</constraint> 
+            <constraint year="2025">100</constraint> 
+            <constraint year="2030">82</constraint> 
+            <constraint year="2035">62</constraint> 
+            <constraint year="2040">42</constraint> 
+            <constraint year="2045">22</constraint> 
+            <constraint year="2050">2</constraint> 
 
            </ghgpolicy>
 
