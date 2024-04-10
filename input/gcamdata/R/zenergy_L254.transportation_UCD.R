@@ -1105,7 +1105,7 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
       repeat_add_columns(tibble(group = income_groups)) %>%
       left_join_error_no_match(L154.trn_serv_shares_subsector %>%
                                  filter(scenario == "CORE") %>%
-                                 select(-year, -scenario) %>%
+                                 select(-scenario) %>%
                                  rename(tranSubsector = subsector), by = c("region", "supplysector", "tranSubsector", "group")) %>%
       # Add equal shares to nonMotor
       mutate(share = 1/length(income_groups)) %>%
@@ -1220,7 +1220,7 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
 
     fit_pass_fn <- function(df) {
 
-      formula <- "base.service ~ a * pcGDP_thous75USD * ((price / lag_price) ^ price.elasticity) * pop"
+      formula <- "base.service ~ a * pcGDP_thous75USD * price * pop"
       start.value <- c(a = 1)
 
       fit_pass_df <- nls(formula, df, start.value)
@@ -1249,7 +1249,7 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
 
     L254.Trn.bias.adder_pre <- trn_data_fin %>%
       filter(year == MODEL_FINAL_BASE_YEAR) %>%
-      mutate(est.base.service = coef_trn * pcGDP_thous75USD * ((price / lag_price) ^ price.elasticity) * pop) %>%
+      mutate(est.base.service = coef_trn * pcGDP_thous75USD * price * pop) %>%
       mutate(bias.adder = base.service - est.base.service) %>%
       unite(energy.final.demand, c("energy.final.demand", "group"), sep = "_") %>%
       rename(trn.final.demand = energy.final.demand) %>%
@@ -1258,7 +1258,7 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
 
     L254.Trn.bias.adder_fut <- trn_data_fin %>%
       filter(year == MODEL_FINAL_BASE_YEAR) %>%
-      mutate(est.base.service = coef_trn * pcGDP_thous75USD * ((price / lag_price) ^ price.elasticity) * pop) %>%
+      mutate(est.base.service = coef_trn * pcGDP_thous75USD * price * pop) %>%
       group_by(sce, region, year, energy.final.demand) %>%
       summarise(base.service = sum(base.service),
                 est.base.service = sum(est.base.service)) %>%
