@@ -240,7 +240,7 @@ double TrnFinalDemand::calcFinalDemand(const string& aRegionName,
 
         // Function
 
-    mServiceDemands[aPeriod] = (mTrnCoef * subregionalIncome * price * subregionalPopulation) + TrnBiasAdder;
+    mServiceDemands[aPeriod] = (mTrnCoef * subregionalIncome * pow(PriceRatio, Prelast) * subregionalPopulation) + TrnBiasAdder;
 
     }
 
