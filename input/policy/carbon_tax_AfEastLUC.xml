@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?><scenario name="CCSP450">
+    <world>
+                <region name="Africa_Eastern">
+            <ghgpolicy name="CO2_LUC">
+                <market>Africa_Eastern_LUC</market>
+				<fixedTax year="2020">1</fixedTax>
+				<fixedTax year="2025">1</fixedTax>
+				<fixedTax year="2030">1</fixedTax>
+				<fixedTax year="2035">1</fixedTax>
+				<fixedTax year="2040">1</fixedTax>
+				<fixedTax year="2045">1</fixedTax>
+				<fixedTax year="2050">1</fixedTax>
+            </ghgpolicy>
+        </region>
+            </world>
+</scenario>

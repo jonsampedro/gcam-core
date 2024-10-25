@@ -108,6 +108,7 @@
 
 		<Value name="policy-file">../input/policy/ghg_cap_LTTglobal_reg.xml</Value>
 		<Value name="policy-file">../input/policy/linked_ghg_policy_luc_gwp5_reg.xml</Value>
+		<Value name="policy-file">../input/policy/carbon_tax_AfEastLUC.xml</Value>
 		
 	</ScenarioComponents>
 	<Strings>
