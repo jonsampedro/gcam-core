@@ -216,7 +216,7 @@ module_aglu_L202.an_input <- function(command, ...) {
       mutate(technology = subresource,
              share.weight = 1.0) %>%
       select(LEVEL2_DATA_NAMES[["ResTechShrwt"]]) ->
-    L202.ResTechShrwt
+      L202.ResTechShrwt
 
     # L202.UnlimitedRenewRsrcCurves
     A_agUnlimitedRsrcCurves %>%
@@ -526,9 +526,9 @@ module_aglu_L202.an_input <- function(command, ...) {
     L202.an_nonFeedCost_R_C_0 %>%
       group_by(region, GCAM_commodity, system) %>%
       mutate(Prod_Mt_sys = sum(Prod_Mt),
-                SalesRevenue_bilUSD_sys = sum(SalesRevenue_bilUSD),
-                FeedCost_bilUSD_sys = sum(FeedCost_bilUSD),
-                nonFeedCost_bilUSD_sys = SalesRevenue_bilUSD_sys - FeedCost_bilUSD_sys) %>%
+             SalesRevenue_bilUSD_sys = sum(SalesRevenue_bilUSD),
+             FeedCost_bilUSD_sys = sum(FeedCost_bilUSD),
+             nonFeedCost_bilUSD_sys = SalesRevenue_bilUSD_sys - FeedCost_bilUSD_sys) %>%
       mutate(nonFeedCost = if_else(Prod_Mt == 0, 0, nonFeedCost_bilUSD_sys / Prod_Mt_sys),
              nonFeedCost_FeedCropsOnly = if_else(Prod_Mt == 0, 0, nonFeedCost_bilUSD_sys / Prod_Mt[feed == "FeedCrops"]) ) %>%
       ungroup() ->
@@ -577,9 +577,9 @@ module_aglu_L202.an_input <- function(command, ...) {
       mutate(stub.technology = technology,
              minicam.non.energy.input = "non-feed") %>%
       left_join_error_no_match(L202.an_nonFeedCost_R_C_3 %>%
-                  select(region, supplysector = GCAM_commodity, subsector = system,
-                         stub.technology = feed, nonFeedCost),
-                  by = c("supplysector", "subsector", "region", "stub.technology")) %>%
+                                 select(region, supplysector = GCAM_commodity, subsector = system,
+                                        stub.technology = feed, nonFeedCost),
+                               by = c("supplysector", "subsector", "region", "stub.technology")) %>%
       mutate(input.cost = round(nonFeedCost, aglu.DIGITS_CALPRICE)) %>%
       select(LEVEL2_DATA_NAMES[["StubTechCost"]]) ->
       L202.StubTechCost_an
