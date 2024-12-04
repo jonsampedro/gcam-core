@@ -114,6 +114,8 @@ void TranSubsector::toDebugXMLDerived( const int period, ostream& out, Tabs* tab
     XMLWriteElement( mSpeed[ period ], "speed", out, tabs );
     XMLWriteElement( mTimeValueMult[ period ], "time-value-multiplier", out, tabs );
     XMLWriteElement( mSubregionalIncomeTrn[ period ], "subregional-income-trn", out, tabs);
+    XMLWriteElement( getGeneralizedPrice(period), "GeneralizedPrice", out, tabs);
+    XMLWriteElement( getTrnPrice(period), "PriceTrn", out, tabs);
 }
 
 /*! \brief Perform any initializations needed for each period.
@@ -210,6 +212,12 @@ double TranSubsector::getGeneralizedPrice( const int aPeriod ) const {
     
     double timeValue =  getTimeValue( aPeriod );
     return Subsector::getPrice( aPeriod ) + timeValue;
+}
+
+double TranSubsector::getTrnPrice(const int aPeriod) const {
+    // Get a price with no time-value included
+
+    return Subsector::getPrice(aPeriod);
 }
 
 /*! \brief Get the time in transit per day per person for the period.

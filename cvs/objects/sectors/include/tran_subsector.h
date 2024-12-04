@@ -111,6 +111,7 @@ protected:
     double getTimeInTransit( const int aPeriod ) const;
     double getServicePerCapita( const int aPeriod ) const;
     double getGeneralizedPrice( const int aPeriod ) const;
+    double getTrnPrice(const int aPeriod) const;
 };
 
 
