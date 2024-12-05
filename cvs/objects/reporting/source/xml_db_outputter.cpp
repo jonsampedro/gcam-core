@@ -746,6 +746,10 @@ void XMLDBOutputter::startVisitTranSubsector( const TranSubsector* aTranSubsecto
             writeItem( "time-value-multiplier", "N/A", currValue, i );
         }
     }
+
+    for (int i = 0; i < modeltime->getmaxper(); ++i) {
+        writeItem("PriceTrn", "1990$/pass-km", aTranSubsector->getTrnPrice(i), i);
+    }
 }
 
 void XMLDBOutputter::endVisitTranSubsector( const TranSubsector* aTranSubsector, const int aPeriod ) {
