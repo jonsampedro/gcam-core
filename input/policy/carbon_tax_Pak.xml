@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?><scenario name="CCSP450">
+    <world>
+                <region name="Pakistan">
+            <ghgpolicy name="CO2">
+                <market>Pakistan</market>
+				<fixedTax year="2020">2.61156</fixedTax>
+				<fixedTax year="2025">4.146816667</fixedTax>
+				<fixedTax year="2030">5.682073333</fixedTax>
+				<fixedTax year="2035">7.21733</fixedTax>
+				<fixedTax year="2040">8.752586667</fixedTax>
+				<fixedTax year="2045">10.28784333</fixedTax>
+				<fixedTax year="2050">11.8231</fixedTax>
+            </ghgpolicy>
+        </region>
+
+                <!--region name="European Free Trade Association">
+            <ghgpolicy name="CO2">
+                <market>EFTA</market>
+				<fixedTax year="2020">7.64504</fixedTax>
+				<fixedTax year="2025">45.02553333</fixedTax>
+				<fixedTax year="2030">82.40602667</fixedTax>
+				<fixedTax year="2035">119.78652</fixedTax>
+				<fixedTax year="2040">157.1670133</fixedTax>
+				<fixedTax year="2045">194.5475067</fixedTax>
+				<fixedTax year="2050">231.928</fixedTax>
+            </ghgpolicy>
+        </region-->
+
+
+            </world>
+</scenario>
