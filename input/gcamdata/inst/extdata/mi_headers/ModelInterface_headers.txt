@@ -508,7 +508,7 @@ DeleteFinalDemand, world/+{name}region, region/+{name; delete=1}energy-final-dem
 
 DeleteFinalDemand_trn, world/+{name}region, region/+{name; delete=1}trn-final-demand, scenario, scenario/world
 
-DemandFunction_trn_coef, world/+{name}region, region/+{name}trn-final-demand, trn-final-demand/+coef_trn, scenario, scenario/world
+DemandFunction_trn_coef, world/+{name}region, region/+{name}trn-final-demand, trn-final-demand/+{year}coef_trn, trn-final-demand/+coef_trn, scenario, scenario/world
 
 CalPrice_trn, world/+{name}region, region/+{name}trn-final-demand, trn-final-demand/+basePrice, scenario, scenario/world
 

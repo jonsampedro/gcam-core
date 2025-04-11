@@ -120,7 +120,7 @@ protected:
         EnergyFinalDemand,
 
         //! Coefficient to estimate pass_km demand                      
-        DEFINE_VARIABLE(SIMPLE, "coef_trn", mTrnCoef, Value),
+        DEFINE_VARIABLE(ARRAY, "coef_trn", mTrnCoef, objects::PeriodVector<Value>),
 
         //! Bias Adder to estimate pass_km demand                      
         DEFINE_VARIABLE(ARRAY, "bias-adder", mBiasAdderTrn, objects::PeriodVector<Value>),

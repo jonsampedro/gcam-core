@@ -1239,7 +1239,24 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
       unite(energy.final.demand, c("energy.final.demand", "group"), sep = "_") %>%
       rename(trn.final.demand = energy.final.demand) %>%
       select(LEVEL2_DATA_NAMES[["DemandFunction_trn_coef"]]) %>%
+      select(-year) %>%
+      repeat_add_columns(tibble(year = MODEL_YEARS)) %>%
       distinct()
+
+      # Adjust for Sust Scenario
+      adj_factor <- data.frame(
+        year = MODEL_YEARS,
+        fct = c(rep(1, 4), seq(from = 1, to = 0.7, length.out = 8), rep(0.7,10))
+      )
+
+      L254.demandFn_trn_coef <- L254.demandFn_trn_coef %>%
+        left_join_error_no_match(adj_factor, by = "year") %>%
+        mutate(fct = if_else(region == "Russia" & year >= 2035, 0.8285714, fct)) %>%
+        mutate(fct = if_else(region == "Europe_Eastern" & year >= 2035, 0.8285714, fct)) %>%
+        mutate(coef_trn = if_else(grepl("trn_aviation", trn.final.demand),
+                                  coef_trn * fct,
+                                  coef_trn)) %>%
+        select(LEVEL2_DATA_NAMES[["DemandFunction_trn_coef"]])
 
 
     # Get the bias adder parameter
@@ -1287,6 +1304,7 @@ module_energy_L254.transportation_UCD <- function(command, ...) {
       distinct() %>%
       mutate(sce = "CORE") %>%
       select(LEVEL2_DATA_NAMES[["Trn_bias_adder"]], sce)
+
 
 
     #--------------------

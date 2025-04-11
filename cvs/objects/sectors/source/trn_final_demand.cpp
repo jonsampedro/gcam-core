@@ -102,7 +102,7 @@ void TrnFinalDemand::toDebugXML( const int aPeriod,
 
     // write the xml for the class members.
     XMLWriteElement(mBaseService[ aPeriod ], "base-service", aOut, aTabs );
-    XMLWriteElement(mTrnCoef, "coef_trn", aOut, aTabs );
+    XMLWriteElement(mTrnCoef[aPeriod], "coef_trn", aOut, aTabs );
     XMLWriteElement(mBasePriceTrn, "basePrice", aOut, aTabs);
     //XMLWriteElement(mPriceAdjustParam, "PriceAdjustParam", aOut, aTabs);
     //XMLWriteElement(mPriceAdj, "PriceAdj", aOut, aTabs);
@@ -224,6 +224,9 @@ double TrnFinalDemand::calcFinalDemand(const string& aRegionName,
     //Bias Adder
     double TrnBiasAdder = mBiasAdderTrn[aPeriod];
 
+    //Coef
+    double TrnCoef = mTrnCoef[aPeriod];
+
     // Price Elasticity
     double Prelast = mPriceElasticity[aPeriod];
 
@@ -232,6 +235,7 @@ double TrnFinalDemand::calcFinalDemand(const string& aRegionName,
     mSubregionalPopulation[aPeriod] = subregionalPopulation;
     mSubregionalIncome[aPeriod] = subregionalIncome;
     mBiasAdderTrn[aPeriod] = TrnBiasAdder;
+    mTrnCoef[aPeriod] = TrnCoef;
     //mPriceAdjustParam = PriceAdjustParam;
     //mPriceAdj = price_adj;
     mPrice = price;
@@ -240,7 +244,7 @@ double TrnFinalDemand::calcFinalDemand(const string& aRegionName,
 
         // Function
 
-    mServiceDemands[aPeriod] = (mTrnCoef * subregionalIncome * pow(PriceRatio, Prelast) * subregionalPopulation) + TrnBiasAdder;
+    mServiceDemands[aPeriod] = (TrnCoef * subregionalIncome * pow(PriceRatio, Prelast) * subregionalPopulation) + TrnBiasAdder;
 
     }
 

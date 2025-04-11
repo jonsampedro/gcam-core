@@ -108,6 +108,20 @@ module_energy_building_det_xml <- function(command, ...) {
     L244.GenericBaseDens <- get_data(all_data, "L244.GenericBaseDens")
     L244.ThermalBaseDens <- get_data(all_data, "L244.ThermalBaseDens")
 
+    # Adjustments for the sust scenario:
+    L244.GompFnParam <- L244.GompFnParam %>%
+      mutate(unadjust.satiation = unadjust.satiation * 0.6)
+
+    L244.Satiation_flsp <- L244.Satiation_flsp %>%
+      mutate(satiation.level = satiation.level* 0.75)
+
+    L244.GenericTradFuelParams <- L244.GenericTradFuelParams %>%
+      mutate(b2 = b2 * 1.5)
+
+    L244.ThermalTradFuelParams <- L244.ThermalTradFuelParams %>%
+      mutate(b2 = b2 * 1.5)
+
+
     # ===================================================
 
     # Produce outputs

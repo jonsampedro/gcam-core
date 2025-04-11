@@ -612,9 +612,9 @@ module_energy_L232.other_industry <- function(command, ...) {
     # KVC: SSP1 needs lower income elasticities. Storyline has limited growth in energy-related industries
     # because of warm fuzzy feelings about environment. We are hard-coding this for a while.
     L232.IncomeElasticity_ind %>%
-      filter(scenario == "SSP1") %>%
+      filter(scenario == "gSSP2") %>%
       mutate(income.elasticity = income.elasticity * 0.75) %>%
-      bind_rows(filter(L232.IncomeElasticity_ind, scenario != "SSP1")) ->
+      bind_rows(filter(L232.IncomeElasticity_ind, scenario != "gSSP2")) ->
       L232.IncomeElasticity_ind
 
     # ===================================================

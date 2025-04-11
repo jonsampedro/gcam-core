@@ -457,6 +457,7 @@ module_energy_L2321.cement <- function(command, ...) {
                              xout = value, rule = 2)[["y"]],
              value = round(value, energy.DIGITS_INCELAS_IND)) %>%
       rename(income.elasticity = value) %>%
+      mutate(income.elasticity = if_else(scenario == "gSSP2", income.elasticity * 0.75, income.elasticity)) %>%
       mutate(energy.final.demand = A321.demand[["energy.final.demand"]]) ->
       L2321.IncomeElasticity_cement # intermediate tibble
 

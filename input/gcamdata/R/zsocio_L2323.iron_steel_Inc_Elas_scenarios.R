@@ -150,7 +150,8 @@ module_socio_L2323.iron_steel_Inc_Elas_scenarios <- function(command, ...) {
       arrange(year) %>%
       #replace those huge number
       mutate(income.elasticity = replace(income.elasticity,income.elasticity > 10 , 10),
-             income.elasticity = replace(income.elasticity,income.elasticity < -10,-10))
+             income.elasticity = replace(income.elasticity,income.elasticity < -10,-10)) %>%
+      mutate(income.elasticity = if_else(scenario == "gSSP2", income.elasticity * 0.75, income.elasticity))
 
 
     # Split by scenario and remove scenario column from each tibble

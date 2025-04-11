@@ -68,6 +68,7 @@ module_socio_L2325.chemical_Inc_Elas_scenarios <- function(command, ...) {
                                         rule = 2)[['y']] %>% round(3),
              energy.final.demand = "chemical") %>%
       select(scenario, region, energy.final.demand, year, income.elasticity) %>%
+      mutate(income.elasticity = if_else(scenario == "gSSP2", income.elasticity * 0.75, income.elasticity)) %>%
       arrange(year) ->
       L2325.pcgdp_thous90USD_Scen_R_Y
 

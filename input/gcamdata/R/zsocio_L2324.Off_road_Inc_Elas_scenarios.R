@@ -99,7 +99,8 @@ module_socio_L2324.Off_road_Inc_Elas_scenarios <- function(command, ...) {
       arrange(year) ->
       mining
 
-    L2324.pcgdp_thous90USD_Scen_R_Y <- bind_rows(agriculture,construction,mining)
+    L2324.pcgdp_thous90USD_Scen_R_Y <- bind_rows(agriculture,construction,mining) %>%
+      mutate(income.elasticity = if_else(scenario == "gSSP2", income.elasticity * 0.75, income.elasticity))
 
     # Split by scenario and remove scenario column from each tibble
 

@@ -607,7 +607,8 @@ module_energy_L244.building_det <- function(command, ...) {
                                by=c("GCAM_region_ID","year")) %>%
       rename(pcGDP_thous90USD = value) %>%
       # Change units satiation level
-      mutate(satiation.level = satiation.level * 1E6) %>%
+      mutate(satiation.level = satiation.level * 1E6,
+             satiation.level = if_else(satiation.level <= flsp_pc, flsp_pc * 1.01, satiation.level)) %>%
       # Calculate satiation impedance
       mutate(`satiation-impedance` = (-log(2)/log((satiation.level - flsp_pc) / (satiation.level))) * pcGDP_thous90USD,
              `satiation-impedance`= round(`satiation-impedance`,energy.DIGITS_SATIATION_IMPEDANCE)) %>%
